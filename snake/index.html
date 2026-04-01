@@ -113,6 +113,12 @@
             box-shadow: 0 20px 40px rgba(0, 255, 136, 0.15);
         }
 
+        /* Fioletowa poświata dla Twojej nowej gry */
+        .game-card.purple-theme:hover {
+            border-color: var(--accent);
+            box-shadow: 0 20px 40px rgba(208, 0, 255, 0.15);
+        }
+
         .game-card h2 {
             font-size: 2rem;
             margin-bottom: 15px;
@@ -139,8 +145,14 @@
             z-index: 2;
         }
 
+        .btn-play.btn-purple {
+            background: var(--accent);
+            color: white;
+        }
+
         .btn-play:hover {
             background: #fff;
+            color: #000;
             transform: scale(1.05);
         }
 
@@ -219,7 +231,7 @@
             <div class="status-bar">
                 <span>Użytkownicy: <b>1,402 Online</b></span>
                 <span>Serwer: <b>Stabilny</b></span>
-                <span>Wersja: <b>2.0.4-Beta</b></span>
+                <span>Wersja: <b>2.0.5-Beta</b></span>
             </div>
         </header>
 
@@ -240,16 +252,21 @@
                 <div class="visual-effect"></div>
             </div>
 
-            <div class="game-card" style="border-style: dashed;">
-                <span class="badge" style="background: #555;">COMING SOON</span>
+            <div class="game-card purple-theme">
+                <span class="badge" style="background: var(--secondary);">NEW</span>
                 <div>
-                    <h2 style="color: #555;">Cyber Dash</h2>
-                    <p style="color: #444;">Przygotuj się na nową produkcję. Szybka akcja, synthwave'owa muzyka i
-                        nieskończone poziomy.</p>
+                    <h2>Pixel Revenge</h2>
+                    <p>Mroczny Cyber-RPG. Walcz z botami, zdobywaj kredyty i ulepszaj swój procesor bojowy na czarnym
+                        rynku.</p>
+                    <ul style="list-style: none; font-size: 0.8rem; color: var(--secondary);">
+                        <li>✦ System Rzadkości (Loot)</li>
+                        <li>✦ Black Market (Sklep)</li>
+                        <li>✦ 10+ Pasywnych Skilli</li>
+                    </ul>
                 </div>
-                <a href="#" class="btn-locked">Zablokowane</a>
+                <a href="rpg/rpg.html" class="btn-play btn-purple">Uruchom Protokół</a>
                 <div class="visual-effect"
-                    style="background: radial-gradient(circle, var(--secondary) 0%, transparent 70%);"></div>
+                    style="background: radial-gradient(circle, var(--accent) 0%, transparent 70%);"></div>
             </div>
 
             <div class="game-card" style="border-style: dashed;">
@@ -266,10 +283,11 @@
         <div class="news-section">
             <span class="news-title">LOG SYSTEMOWY // OSTATNIE AKTUALIZACJE</span>
             <div class="news-item">
-                <strong>V2.0.4:</strong> Dodano system dynamicznych skinów do Neon Snake oraz poprawiono kolizje.
+                <strong>V2.0.5:</strong> Zintegrowano nową jednostkę bojową: <b>Pixel Revenge</b>. System handlu
+                aktywny.
             </div>
             <div class="news-item">
-                <strong>V2.0.0:</strong> Oficjalne otwarcie Neon Grid Gaming Hub. Witamy wszystkich graczy!
+                <strong>V2.0.4:</strong> Dodano system dynamicznych skinów do Neon Snake.
             </div>
         </div>
     </div>
@@ -326,17 +344,6 @@
             requestAnimationFrame(animate);
         }
         animate();
-
-        // Efekt "bajeru" na kartach - śledzenie myszki
-        document.querySelectorAll('.game-card').forEach(card => {
-            card.onmousemove = e => {
-                const rect = card.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                card.style.setProperty('--x', `${x}px`);
-                card.style.setProperty('--y', `${y}px`);
-            };
-        });
     </script>
 
 </body>
