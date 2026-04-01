@@ -1,0 +1,357 @@
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&display=swap');
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    image-rendering: pixelated;
+}
+
+body {
+    background: #000;
+    color: #eee;
+    font-family: 'Courier Prime', monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 10px;
+}
+
+#screen {
+    width: 100%;
+    max-width: 900px;
+    height: 90vh;
+    max-height: 700px;
+    background: #111;
+    border: 4px solid #333;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.1);
+}
+
+header {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background: #1a1a1a;
+    color: #00ff88;
+    border-bottom: 2px solid #333;
+    padding: 15px 5px;
+}
+
+.stat {
+    font-size: 1.2rem;
+}
+
+#battle-view {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background: #0a0a0a;
+    border-bottom: 2px solid #333;
+    position: relative;
+    overflow: hidden;
+}
+
+/* --- SPRYTY --- */
+.pixel-sprite {
+    width: 80px;
+    height: 80px;
+    margin: 20px auto;
+    position: relative;
+    transform: scale(1.2);
+}
+
+.hero .head {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background: #8a2be2;
+    top: 0;
+    left: 25px;
+    border: 3px solid #000;
+}
+
+.hero .body {
+    position: absolute;
+    width: 50px;
+    height: 40px;
+    background: #6a1bb2;
+    top: 30px;
+    left: 15px;
+    border: 3px solid #000;
+}
+
+.hero .sword {
+    position: absolute;
+    width: 10px;
+    height: 60px;
+    background: #00f2ff;
+    top: -10px;
+    left: 60px;
+    border: 2px solid #000;
+}
+
+.goblin .g-head {
+    position: absolute;
+    width: 40px;
+    height: 35px;
+    background: #4ec44e;
+    top: 15px;
+    left: 20px;
+    border: 3px solid #000;
+}
+
+.goblin .g-ear-l {
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    background: #4ec44e;
+    top: 10px;
+    left: 10px;
+    transform: rotate(-20deg);
+    border: 2px solid #000;
+}
+
+.goblin .g-ear-r {
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    background: #4ec44e;
+    top: 10px;
+    left: 55px;
+    transform: rotate(20deg);
+    border: 2px solid #000;
+}
+
+.goblin .g-eyes {
+    position: absolute;
+    width: 30px;
+    height: 5px;
+    background: #ff003c;
+    top: 25px;
+    left: 25px;
+}
+
+.pixel-hp {
+    width: 100%;
+    height: 15px;
+    background: #222;
+    border: 2px solid #444;
+    margin-bottom: 5px;
+}
+
+.fill-p {
+    height: 100%;
+    background: #00ff88;
+    width: 100%;
+    transition: 0.3s;
+}
+
+.fill-e {
+    height: 100%;
+    background: #ff3c3c;
+    width: 100%;
+    transition: 0.3s;
+}
+
+/* --- FOOTER I LOGI --- */
+footer {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    /* Nieco szerszy panel przycisków */
+    background: #1a1a1a;
+    height: 200px;
+}
+
+.log-container {
+    padding: 12px;
+    font-size: 13px;
+    overflow-y: auto;
+    background: #050505;
+    border-right: 2px solid #333;
+    display: flex;
+    flex-direction: column-reverse;
+    /* Nowe wiadomości na górze */
+    gap: 6px;
+    text-shadow: 1px 1px 0px #000;
+}
+
+.log-container div {
+    border-left: 2px solid transparent;
+    padding-left: 8px;
+    animation: fadeInLog 0.2s ease-out;
+}
+
+@keyframes fadeInLog {
+    from {
+        opacity: 0;
+        transform: translateX(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 12px;
+    background: #111;
+}
+
+.p-btn {
+    background: #222;
+    border: 2px solid #444;
+    color: #eee;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 10px;
+    text-transform: uppercase;
+    transition: 0.1s;
+}
+
+.p-btn:active {
+    transform: scale(0.95);
+}
+
+.p-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.p-btn:hover:not(:disabled) {
+    background: #333;
+    border-color: #00ff88;
+    color: #00ff88;
+}
+
+.p-green {
+    color: #00ff88;
+    border-color: #006435;
+}
+
+.p-purple {
+    color: #bc00ff;
+    border-color: #5a007a;
+}
+
+#cheat-input {
+    grid-column: span 2;
+    background: #000;
+    border: 2px solid #333;
+    color: #0f0;
+    font-family: inherit;
+    padding: 8px;
+    outline: none;
+}
+
+#cheat-input:focus {
+    border-color: #00ff88;
+}
+
+/* --- MARKET / MODAL --- */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: none;
+    z-index: 100;
+    padding: 20px;
+}
+
+.modal-pix {
+    background: #111;
+    border: 4px solid #333;
+    width: 100%;
+    max-width: 500px;
+    margin: auto;
+    padding: 20px;
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+    box-shadow: 0 0 30px rgba(188, 0, 255, 0.2);
+}
+
+#shop-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+#shop-tabs button {
+    flex: 1;
+    padding: 10px;
+    background: #222;
+    border: 2px solid #444;
+    color: #fff;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+#shop-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 350px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.item-card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 4px;
+}
+
+/* --- ANIMACJE DMG --- */
+.dmg {
+    position: absolute;
+    font-size: 28px;
+    font-weight: bold;
+    color: #ff3c3c;
+    text-shadow: 2px 2px 0px #000;
+    pointer-events: none;
+    z-index: 10;
+    animation: p-up 0.5s forwards ease-out;
+}
+
+@keyframes p-up {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-80px);
+    }
+}
+
+/* --- RESPONSYWNOŚĆ --- */
+@media (max-width: 650px) {
+    footer {
+        grid-template-columns: 1fr;
+        grid-template-rows: 120px 1fr;
+        height: auto;
+    }
+
+    .log-container {
+        border-right: none;
+        border-bottom: 2px solid #333;
+    }
+
+    header {
+        font-size: 0.8rem;
+    }
+}
