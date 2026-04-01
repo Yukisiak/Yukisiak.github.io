@@ -1,138 +1,86 @@
 <!DOCTYPE html>
-
 <html lang="pl">
 
 <head>
-
     <meta charset="UTF-8">
-
-    <title>PIXEL REVENGE - FIX EDITION</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PIXEL REVENGE - HUB EDITION</title>
     <link rel="stylesheet" href="styles.css">
-
 </head>
 
 <body>
 
     <div id="screen">
-
         <header>
-
             <div class="stat">FLOOR:<span id="h-floor">1</span></div>
-
             <div class="stat">LVL:<span id="h-lvl">1</span></div>
-
-            <div class="stat">CREDITS:<span id="h-gold">250</span></div>
-
+            <div class="stat">GOLD:<span id="h-gold">250</span></div>
             <div class="stat">HP:<span id="h-hp-text">100/100</span></div>
-
         </header>
 
-
-
         <div id="battle-view">
-
             <div class="unit" id="player">
-
                 <div class="pixel-hp">
                     <div id="p-hp-fill" class="fill-p"></div>
                 </div>
-
                 <div class="pixel-sprite hero">
-
                     <div class="head"></div>
                     <div class="body"></div>
                     <div class="sword"></div>
-
                 </div>
-
                 <div class="u-name">CYBER_KNIGHT</div>
-
             </div>
 
             <div class="vs-sign">VS</div>
 
             <div class="unit" id="enemy">
-
                 <div class="pixel-hp">
                     <div id="e-hp-fill" class="fill-e"></div>
                 </div>
-
                 <div class="pixel-sprite goblin" id="e-sprite">
-
                     <div class="g-ear-l"></div>
                     <div class="g-ear-r"></div>
-
                     <div class="g-head"></div>
                     <div class="g-eyes"></div>
-
                 </div>
-
                 <div class="u-name" id="e-name">---</div>
-
             </div>
-
         </div>
 
-
-
         <footer>
-
             <div class="log-container" id="log-box"></div>
-
             <div class="controls">
-
                 <button class="p-btn" onclick="Combat.hit('LIGHT')">SLASH</button>
-
                 <button class="p-btn" onclick="Combat.hit('HEAVY')">SMASH</button>
-
                 <button class="p-btn p-green" onclick="Combat.heal()">REPAIR (50C)</button>
-
                 <button class="p-btn p-purple" onclick="Shop.open()">MARKET</button>
-
-                <input type="text" id="cheat-input" placeholder="CMD..."
+                <input type="text" id="cheat-input" placeholder="Wpisz CMD..."
                     onkeydown="if(event.key==='Enter') Game.cheat(this.value)">
-
             </div>
-
         </footer>
-
     </div>
 
-
-
     <div id="shop-modal" class="modal">
-
         <div class="modal-pix">
-
-            <div class="m-header">
-
-                <span>BLACK_MARKET</span>
-
-                <button onclick="Shop.close()">[X]</button>
-
+            <div class="m-header"
+                style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px;">
+                <span style="font-size: 1.2rem; color: #bc00ff; font-weight: bold;">BLACK_MARKET</span>
+                <span style="color: #ffae00; font-size: 1.1rem;">PORTFEL: $<b id="shop-gold-display">0</b></span>
+                <button onclick="Shop.close()" class="p-btn"
+                    style="padding: 2px 12px; border-color: #f00; color: #f00;">X</button>
             </div>
 
             <div id="shop-tabs">
-
-                <button onclick="Shop.draw('GEAR')">EQUIPMENT</button>
-
-                <button onclick="Shop.draw('SKILL')">PASSIVES</button>
-
+                <button class="p-btn" onclick="Shop.draw('GEAR')">EQUIPMENT</button>
+                <button class="p-btn" onclick="Shop.draw('SKILL')">PASSIVES</button>
             </div>
 
             <div id="shop-items"></div>
-
         </div>
-
     </div>
 
-
-
     <script src="database.js"></script>
-
     <script src="rpg_engine.js"></script>
-
     <script src="rpg_core.js"></script>
 
 </body>

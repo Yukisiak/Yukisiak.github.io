@@ -13,9 +13,17 @@ const Shop = {
     },
 
     open() {
-        this.refreshOffer();
+        if (this.slots.GEAR.length === 0 && this.slots.SKILL.length === 0) {
+            this.refreshOffer();
+        }
         document.getElementById('shop-modal').style.display = "block";
+        this.updateGoldDisplay();
         this.draw(this.currentTab);
+    },
+
+    updateGoldDisplay() {
+        const display = document.getElementById('shop-gold-display');
+        if (display) display.innerText = Math.floor(Game.p.gold);
     },
 
     refreshOffer() {
@@ -50,12 +58,12 @@ const Shop = {
             div.className = "item-card";
             div.style.borderLeft = `5px solid ${item.c}`;
             if (tab === 'GEAR') {
-                div.innerHTML = `<span><b style="color:${item.c}">${item.n}</b><br>+${item.v} ${item.t === 'W' ? 'ATK' : 'DEF'}</span>
+                div.innerHTML = `<span><b style="color:${item.c}; font-size: 1.1rem;">${item.n}</b><br>+${item.v} ${item.t === 'W' ? 'ATK' : 'DEF'}</span>
                                  <button class="p-btn" onclick="Shop.buyGear(${idx})">${item.p}C</button>`;
             } else {
                 const owned = Game.p.passives.includes(item.id);
-                div.innerHTML = `<span><b style="color:${item.c}">${item.n}</b><br><small>${item.d}</small></span>
-                                 <button class="p-btn" ${owned ? 'disabled' : ''} onclick="Shop.buySkill(${idx})">${owned ? 'MAKS' : item.p + 'C'}</button>`;
+                div.innerHTML = `<span><b style="color:${item.c}; font-size: 1.1rem;">${item.n}</b><br><small>${item.d}</small></span>
+                                 <button class="p-btn" ${owned ? 'disabled' : ''} onclick="Shop.buySkill(${idx})">${owned ? 'OWNED' : item.p + 'C'}</button>`;
             }
             grid.appendChild(div);
         });
@@ -67,7 +75,7 @@ const Shop = {
         Game.p.gold -= item.p;
         if (item.t === 'W') Game.p.wep = item.v; else Game.p.arm = item.v;
         this.slots.GEAR.splice(idx, 1);
-        Game.sync(); this.draw('GEAR');
+        Game.sync(); this.updateGoldDisplay(); this.draw('GEAR');
     },
 
     buySkill(idx) {
@@ -76,7 +84,7 @@ const Shop = {
         Game.p.gold -= s.p;
         Game.p.passives.push(s.id);
         this.slots.SKILL.splice(idx, 1);
-        Game.sync(); this.draw('SKILL');
+        Game.sync(); this.updateGoldDisplay(); this.draw('SKILL');
     },
 
     close() { document.getElementById('shop-modal').style.display = "none"; }
