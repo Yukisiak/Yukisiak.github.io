@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+
+<html lang="pl">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>PIXEL REVENGE - FIX EDITION</title>
+
+    <link rel="stylesheet" href="styles.css">
+
+</head>
+
+<body>
+
+    <div id="screen">
+
+        <header>
+
+            <div class="stat">FLOOR:<span id="h-floor">1</span></div>
+
+            <div class="stat">LVL:<span id="h-lvl">1</span></div>
+
+            <div class="stat">CREDITS:<span id="h-gold">250</span></div>
+
+            <div class="stat">HP:<span id="h-hp-text">100/100</span></div>
+
+        </header>
+
+
+
+        <div id="battle-view">
+
+            <div class="unit" id="player">
+
+                <div class="pixel-hp">
+                    <div id="p-hp-fill" class="fill-p"></div>
+                </div>
+
+                <div class="pixel-sprite hero">
+
+                    <div class="head"></div>
+                    <div class="body"></div>
+                    <div class="sword"></div>
+
+                </div>
+
+                <div class="u-name">CYBER_KNIGHT</div>
+
+            </div>
+
+            <div class="vs-sign">VS</div>
+
+            <div class="unit" id="enemy">
+
+                <div class="pixel-hp">
+                    <div id="e-hp-fill" class="fill-e"></div>
+                </div>
+
+                <div class="pixel-sprite goblin" id="e-sprite">
+
+                    <div class="g-ear-l"></div>
+                    <div class="g-ear-r"></div>
+
+                    <div class="g-head"></div>
+                    <div class="g-eyes"></div>
+
+                </div>
+
+                <div class="u-name" id="e-name">---</div>
+
+            </div>
+
+        </div>
+
+
+
+        <footer>
+
+            <div class="log-container" id="log-box"></div>
+
+            <div class="controls">
+
+                <button class="p-btn" onclick="Combat.hit('LIGHT')">SLASH</button>
+
+                <button class="p-btn" onclick="Combat.hit('HEAVY')">SMASH</button>
+
+                <button class="p-btn p-green" onclick="Combat.heal()">REPAIR (50C)</button>
+
+                <button class="p-btn p-purple" onclick="Shop.open()">MARKET</button>
+
+                <input type="text" id="cheat-input" placeholder="CMD..."
+                    onkeydown="if(event.key==='Enter') Game.cheat(this.value)">
+
+            </div>
+
+        </footer>
+
+    </div>
+
+
+
+    <div id="shop-modal" class="modal">
+
+        <div class="modal-pix">
+
+            <div class="m-header">
+
+                <span>BLACK_MARKET</span>
+
+                <button onclick="Shop.close()">[X]</button>
+
+            </div>
+
+            <div id="shop-tabs">
+
+                <button onclick="Shop.draw('GEAR')">EQUIPMENT</button>
+
+                <button onclick="Shop.draw('SKILL')">PASSIVES</button>
+
+            </div>
+
+            <div id="shop-items"></div>
+
+        </div>
+
+    </div>
+
+
+
+    <script src="database.js"></script>
+
+    <script src="rpg_engine.js"></script>
+
+    <script src="rpg_core.js"></script>
+
+</body>
+
+</html>
