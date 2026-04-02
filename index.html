@@ -10,6 +10,8 @@
             --primary: #00ff88;
             --secondary: #00d4ff;
             --accent: #d000ff;
+            --danger: #ff4d4d;
+            --warning: #ffaa00;
             --bg: #05070a;
             --card-bg: rgba(13, 17, 23, 0.8);
             --border: #30363d;
@@ -113,10 +115,15 @@
             box-shadow: 0 20px 40px rgba(0, 255, 136, 0.15);
         }
 
-        /* Fioletowa poświata dla Twojej nowej gry */
+        /* Motywy kolorystyczne kart */
         .game-card.purple-theme:hover {
             border-color: var(--accent);
             box-shadow: 0 20px 40px rgba(208, 0, 255, 0.15);
+        }
+
+        .game-card.doom-theme:hover {
+            border-color: var(--danger);
+            box-shadow: 0 20px 40px rgba(255, 77, 77, 0.2);
         }
 
         .game-card h2 {
@@ -150,21 +157,15 @@
             color: white;
         }
 
+        .btn-play.btn-doom {
+            background: linear-gradient(45deg, #ff4d4d, #ffaa00);
+            color: black;
+        }
+
         .btn-play:hover {
             background: #fff;
             color: #000;
             transform: scale(1.05);
-        }
-
-        .btn-locked {
-            background: #222;
-            color: #555;
-            text-decoration: none;
-            text-align: center;
-            padding: 15px;
-            border-radius: 12px;
-            font-weight: 900;
-            cursor: not-allowed;
         }
 
         /* --- DECORATIONS --- */
@@ -178,6 +179,7 @@
             border-radius: 5px;
             font-size: 0.7rem;
             font-weight: 900;
+            z-index: 3;
         }
 
         .visual-effect {
@@ -231,7 +233,7 @@
             <div class="status-bar">
                 <span>Użytkownicy: <b>1,402 Online</b></span>
                 <span>Serwer: <b>Stabilny</b></span>
-                <span>Wersja: <b>2.0.5-Beta</b></span>
+                <span>Wersja: <b>2.0.6-Beta</b></span>
             </div>
         </header>
 
@@ -240,12 +242,10 @@
                 <span class="badge">HOT</span>
                 <div>
                     <h2>Neon Snake</h2>
-                    <p>Ekstremalna wersja klasyka. Zbieraj magiczne owoce, odblokowuj skiny i walcz o rekord na neonowej
-                        arenie.</p>
+                    <p>Ekstremalna wersja klasyka. Zbieraj magiczne owoce i walcz o rekord na neonowej arenie.</p>
                     <ul style="list-style: none; font-size: 0.8rem; color: var(--primary);">
                         <li>✦ 60+ FPS Interpolacja</li>
                         <li>✦ System Skinów</li>
-                        <li>✦ Umiejętności Q/E</li>
                     </ul>
                 </div>
                 <a href="snake.html" class="btn-play">Graj Teraz</a>
@@ -256,12 +256,10 @@
                 <span class="badge" style="background: var(--secondary);">NEW</span>
                 <div>
                     <h2>Pixel Revenge</h2>
-                    <p>Mroczny Cyber-RPG. Walcz z botami, zdobywaj kredyty i ulepszaj swój procesor bojowy na czarnym
-                        rynku.</p>
+                    <p>Mroczny Cyber-RPG. Walcz z botami i ulepszaj swój procesor bojowy na czarnym rynku.</p>
                     <ul style="list-style: none; font-size: 0.8rem; color: var(--secondary);">
                         <li>✦ System Rzadkości (Loot)</li>
-                        <li>✦ Black Market (Sklep)</li>
-                        <li>✦ 10+ Pasywnych Skilli</li>
+                        <li>✦ Black Market</li>
                     </ul>
                 </div>
                 <a href="rpg/rpg.html" class="btn-play btn-purple">Uruchom Protokół</a>
@@ -269,31 +267,37 @@
                     style="background: radial-gradient(circle, var(--accent) 0%, transparent 70%);"></div>
             </div>
 
-            <div class="game-card" style="border-style: dashed;">
-                <span class="badge" style="background: #555;">LOCKED</span>
+            <div class="game-card doom-theme">
+                <span class="badge" style="background: var(--danger);">DEV-BUILD</span>
                 <div>
-                    <h2 style="color: #555;">Neon Arena</h2>
-                    <p style="color: #444;">Wieloosobowa potyczka w świecie wektorów. Czekaj na aktualizację systemu.
-                    </p>
+                    <h2 style="color: var(--danger); text-shadow: 0 0 10px rgba(255, 77, 77, 0.5);">Cyber Doom</h2>
+                    <p>Dynamiczna strzelanka 3D w pierwszej osobie. Przetrwaj fale cybernetycznych demonów w sercu
+                        zniszczonego mainframe'u.</p>
+                    <ul style="list-style: none; font-size: 0.8rem; color: var(--warning);">
+                        <li>✦ Silnik WebGL 2.0</li>
+                        <li>✦ 15+ Typów Uzbrojenia</li>
+                        <li>✦ Tryb Przetrwania (Waves)</li>
+                    </ul>
                 </div>
-                <a href="#" class="btn-locked">Zablokowane</a>
+                <a href="cyber_3d.html" class="btn-play btn-doom">Inicjuj Eksterminację</a>
+                <div class="visual-effect"
+                    style="background: radial-gradient(circle, var(--warning) 0%, transparent 70%);"></div>
             </div>
         </div>
 
         <div class="news-section">
             <span class="news-title">LOG SYSTEMOWY // OSTATNIE AKTUALIZACJE</span>
             <div class="news-item">
-                <strong>V2.0.5:</strong> Zintegrowano nową jednostkę bojową: <b>Pixel Revenge</b>. System handlu
-                aktywny.
+                <strong>V2.0.6:</strong> Wdrożono wczesny dostęp do <b>Cyber Doom</b>. Zoptymalizowano renderowanie 3D.
             </div>
             <div class="news-item">
-                <strong>V2.0.4:</strong> Dodano system dynamicznych skinów do Neon Snake.
+                <strong>V2.0.5:</strong> Zintegrowano nową jednostkę bojową: <b>Pixel Revenge</b>. System handlu
+                aktywny.
             </div>
         </div>
     </div>
 
     <script>
-        // --- ANIMACJA TŁA ---
         const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
 
