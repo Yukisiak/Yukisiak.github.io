@@ -1,167 +1,214 @@
 const Game = {
-    p: { lvl: 1, floor: 1, hp: 100, maxHp: 100, gold: 100, atk: 15, def: 8, wep: 0, arm: 0, passives: [], effects: [] },
+    p: {
+        lvl: 1, floor: 1, hp: 100, maxHp: 100, gold: 500,
+        atk: 10, ap: 20, def: 8, wep: 0, arm: 0,
+        exp: 0, nextLvlExp: 100,
+        passives: [], effects: [],
+        currentSpell: { n: "START_BOLT", scale: 1.0, c: "#fff", rarity: "ZWYKŁY" },
+        killsOnFloor: 0
+    },
 
     init() {
         this.sync();
         Combat.spawn();
-        this.log("SYSTEM READY... INICJACJA BOJOWA", "#00ff88");
+        this.log("SYSTEM BOJOWY AKTYWNY", "#bc00ff");
+        if (typeof Cheats !== 'undefined') Cheats.init();
     },
 
     sync() {
-        let bHP = this.p.passives.includes('tank') ? 50 : 0;
-        let mHP = this.p.maxHp + bHP;
+        // Obliczamy aktualne max HP (baza + bonusy z gearu + pasywka tank)
+        let totalMaxHp = this.p.maxHp + (this.p.passives.includes('tank') ? 50 : 0);
 
-        document.getElementById('h-lvl').innerText = this.p.lvl;
+        if (this.p.hp > totalMaxHp) this.p.hp = totalMaxHp;
+
         document.getElementById('h-floor').innerText = this.p.floor;
         document.getElementById('h-gold').innerText = Math.floor(this.p.gold);
-        document.getElementById('h-hp-text').innerText = `${Math.ceil(this.p.hp)}/${mHP}`;
-        document.getElementById('p-hp-fill').style.width = Math.max(0, (this.p.hp / mHP * 100)) + "%";
+        document.getElementById('h-hp-text').innerText = `${Math.ceil(this.p.hp)}/${totalMaxHp}`;
+        document.getElementById('p-hp-val').innerText = `${Math.ceil(this.p.hp)}/${totalMaxHp}`;
 
-        // Aktualizacja kasy w otwartym sklepie
-        const shopGold = document.getElementById('shop-gold-display');
-        if (shopGold) shopGold.innerText = Math.floor(this.p.gold);
+        let pFill = (this.p.hp / totalMaxHp) * 100;
+        document.getElementById('p-hp-fill').style.width = pFill + "%";
 
-        this.drawEffects();
-    },
+        document.getElementById('s-lvl').innerText = this.p.lvl;
+        document.getElementById('s-atk').innerText = this.p.atk;
+        document.getElementById('s-ap').innerText = Math.floor(this.p.ap);
+        document.getElementById('s-def').innerText = this.p.def;
+        document.getElementById('s-exp-fill').style.width = (this.p.exp / this.p.nextLvlExp * 100) + "%";
 
-    drawEffects() {
-        let eBox = document.getElementById('p-effects');
-        if (!eBox) {
-            eBox = document.createElement('div');
-            eBox.id = 'p-effects';
-            eBox.style.cssText = "display:flex; gap:5px; margin-top:5px; justify-content:center; flex-wrap:wrap; min-height:20px;";
-            document.getElementById('player').appendChild(eBox);
+        const sList = document.getElementById('status-list');
+        if (this.p.effects.length > 0) {
+            sList.innerHTML = this.p.effects.map(e => `<div class="status-item" style="color:orange">${e.type.toUpperCase()} (${e.dur}T)</div>`).join('');
+        } else {
+            sList.innerHTML = '<div class="no-status">CLEAR</div>';
         }
-        eBox.innerHTML = this.p.effects.map(ef => {
-            const data = DB.statusEffects[ef.id];
-            return `<span style="border:1px solid ${data.c}; color:${data.c}; font-size:10px; padding:2px; background: rgba(0,0,0,0.5)">${data.n} [${ef.rem}]</span>`;
-        }).join('');
     },
 
-    log(m, c = "#00ff88") {
-        const b = document.getElementById('log-box');
-        b.innerHTML = `<div style="color:${c}; margin-bottom: 2px;">> ${m}</div>` + b.innerHTML;
+    processEffects() {
+        for (let i = this.p.effects.length - 1; i >= 0; i--) {
+            let eff = this.p.effects[i];
+            if (eff.type === 'burn') {
+                this.p.hp -= eff.pwr;
+                this.log(`BURN: -${eff.pwr} HP`, "#ff3c3c");
+                Combat.pop(eff.pwr, 'player');
+            }
+            eff.dur--;
+            if (eff.dur <= 0) this.p.effects.splice(i, 1);
+        }
+        this.sync();
+    },
+
+    heal() {
+        let cost = 50;
+        let totalMaxHp = this.p.maxHp + (this.p.passives.includes('tank') ? 50 : 0);
+        if (this.p.gold >= cost && this.p.hp < totalMaxHp) {
+            this.p.gold -= cost;
+            this.p.hp = Math.min(totalMaxHp, this.p.hp + 30);
+            this.log("REPERACJA: +30 HP", "#00ff88");
+            this.sync();
+        }
+    },
+
+    log(msg, color) {
+        const logBox = document.getElementById('log-box');
+        if (!logBox) return;
+        const div = document.createElement('div');
+        div.style.color = color || "#aaa";
+        div.innerHTML = `> ${msg}`;
+        logBox.prepend(div);
+    },
+
+    levelUp() {
+        this.p.lvl++;
+        this.p.exp = 0;
+        this.p.nextLvlExp = Math.floor(this.p.nextLvlExp * 1.5);
+        this.p.maxHp += 20;
+        this.p.hp += 50;
+        this.p.atk += 5;
+        this.p.ap += 10;
+        this.p.def += 3;
+        this.log(`LEVEL UP: ${this.p.lvl}`, "#00ff88");
+        this.sync();
     },
 
     gameOver() {
-        const modal = document.createElement('div');
-        modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); color:red; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; font-family:monospace; text-align:center; padding:20px;";
-        const passiveNames = this.p.passives.map(id => (DB.passives.find(p => p.id === id) || { n: id }).n).join(', ') || "BRAK";
-        modal.innerHTML = `<h1>GAME OVER</h1><p>PIĘTRO: ${this.p.floor}</p><p>MODUŁY: ${passiveNames}</p><button onclick="location.reload()" style="padding:10px; background:red; color:white; border:none; margin-top:20px;">RESTART</button>`;
-        document.body.appendChild(modal);
-    },
-
-    cheat(cmd) {
-        const c = cmd.toLowerCase().trim();
-        if (c === "hesoyam" || c === "handsom" || c === "hand some") {
-            this.p.gold += 10000;
-            this.log("CHEAT: +10.000C", "gold");
-        }
-        if (c === "god") {
-            this.p.maxHp = 99999; this.p.hp = 99999; this.p.atk = 5000;
-            this.log("CHEAT: GOD_MODE", "red");
-        }
-        this.sync();
-        if (document.getElementById('cheat-input')) document.getElementById('cheat-input').value = '';
+        document.getElementById('death-screen').style.display = "block";
+        document.getElementById('death-lvl').innerText = this.p.lvl;
+        document.getElementById('death-floor').innerText = this.p.floor;
     }
 };
 
 const Combat = {
     e: null,
     spawn() {
-        const isB = Game.p.lvl % 10 === 0;
-        const fM = 1 + (Game.p.floor * 0.25);
-        const type = DB.enemies[Math.floor(Math.random() * DB.enemies.length)];
-        this.e = { ...type, hp: (50 + Game.p.lvl * 30) * fM * (isB ? 2.5 : 1), atk: (8 + Game.p.lvl * 6) * fM * (isB ? 1.5 : 1), boss: isB };
-        this.e.maxHp = this.e.hp;
-        document.getElementById('e-name').innerText = isB ? "RAID_BOSS" : `${this.e.n}_${Game.p.lvl}`;
-        Game.log(`WALKA Z: ${this.e.n}`, type.c);
+        let isBoss = Game.p.killsOnFloor >= 5;
+        let raw = DB.enemies[Math.floor(Math.random() * DB.enemies.length)];
+        this.e = JSON.parse(JSON.stringify(raw));
+        this.e.maxHp = Math.floor((50 + (Game.p.floor * 30)) * (isBoss ? 3 : 1));
+        this.e.hp = this.e.maxHp;
+        this.e.atk = Math.floor((8 + (Game.p.floor * 4)) * (isBoss ? 1.5 : 1));
+        this.e.turnCounter = 0;
+        if (isBoss) this.e.n = "BOSS_" + this.e.n;
+
+        document.getElementById('e-name').innerText = this.e.n;
+        document.getElementById('e-name').style.color = isBoss ? "#f00" : this.e.c;
         this.update();
     },
 
     update() {
-        const fill = document.getElementById('e-hp-fill');
-        if (fill) fill.style.width = Math.max(0, (this.e.hp / this.e.maxHp * 100)) + "%";
+        let eFill = (this.e.hp / this.e.maxHp) * 100;
+        document.getElementById('e-hp-fill').style.width = eFill + "%";
+        document.getElementById('e-hp-val').innerText = `${Math.ceil(this.e.hp)}/${this.e.maxHp}`;
     },
 
     hit(type) {
-        if (this.e.hp <= 0 || Game.p.hp <= 0) return;
+        let dmg = 0;
+        if (type === 'SPELL') {
+            dmg = (Game.p.ap + (Game.p.lvl * 2)) * Game.p.currentSpell.scale;
+            if (Game.p.passives.includes('spell_amp')) dmg *= 1.3;
+            if (Game.p.passives.includes('mana_leech')) Game.p.hp = Math.min(Game.p.maxHp + 50, Game.p.hp + 2);
+            Game.log(`CZAR: ${Game.p.currentSpell.n} (-${Math.floor(dmg)})`, "#00f2ff");
+        } else {
+            dmg = Game.p.atk;
+            Game.log(`ATAK: ${Math.floor(dmg)}`, "#fff");
+        }
 
-        // Gracz atakuje
-        let pA = Game.p.atk + Game.p.wep + (Game.p.passives.includes('glass_cannon') ? 40 : 0);
-        if (Game.p.passives.includes('berserk') && (Game.p.hp / Game.p.maxHp < 0.35)) pA *= 2.5;
-        let d = pA * (type === 'HEAVY' ? 1.8 : 1);
-        this.e.hp -= d;
-        this.pop(d, 'enemy');
-        Game.log(`Atakujesz przeciwnika za ${Math.floor(d)} DMG`, "#fff");
+        this.e.hp -= dmg;
+        this.pop(Math.floor(dmg), 'enemy');
 
-        if (this.e.hp <= 0) return this.win();
+        if (this.e.hp <= 0) {
+            setTimeout(() => this.win(), 300);
+        } else {
+            this.enemyTurn();
+        }
+        this.update();
+        Game.sync();
+    },
 
-        // Przeciwnik atakuje
+    enemyTurn() {
         setTimeout(() => {
-            let ed = Math.max(5, this.e.atk - (Game.p.def + Game.p.arm + (Game.p.passives.includes('glass_cannon') ? -20 : 0)));
-            if (Game.p.effects.find(e => e.id === 'weak')) ed *= 1.5;
+            if (this.e.hp <= 0) return;
 
-            // Log użycia skilla
-            if (this.e.skill && Math.random() < this.e.skill.chance) {
-                Game.log(`${this.e.n} używa ${this.e.skill.n}!`, "#ffae00");
-                Game.p.effects.push({ id: this.e.skill.effect, rem: this.e.skill.dur, pwr: this.e.skill.pwr });
-            } else {
-                Game.log(`${this.e.n} wykonuje standardowy atak`, "#ccc");
+            // Sprawdź czy gracz jest zamrożony
+            let isFrozen = Game.p.effects.find(f => f.type === 'freeze');
+            if (isFrozen) {
+                Game.log("JESTEŚ ZAMROŻONY - TRACISZ TURĘ!", "#00f2ff");
+                this.e.turnCounter++;
+                Game.processEffects();
+                return;
             }
 
-            Game.p.hp -= ed;
-            this.pop(ed, 'player');
-            Game.log(`Otrzymujesz ${Math.floor(ed)} DMG od ${this.e.n}`, "#ff3c3c");
+            this.e.turnCounter++;
+            let dmg = Math.max(1, this.e.atk - Game.p.def);
 
-            // Efekty czasowe (DoT)
-            Game.p.effects.forEach(ef => {
-                const info = DB.statusEffects[ef.id];
-                if (ef.id === 'burn' || ef.id === 'acid') {
-                    Game.p.hp -= ef.pwr;
-                    this.pop(ef.pwr, 'player');
-                    Game.log(`Status ${info.n} zadaje Ci ${ef.pwr} DMG`, info.c);
+            // LOGIKA UMIEJĘTNOŚCI PRZECIWNIKA
+            if (this.e.skill && this.e.turnCounter % this.e.skill.cooldown === 0) {
+                let s = this.e.skill;
+                if (Math.random() * 100 <= s.hit) {
+                    Game.p.effects.push({ type: s.effect, pwr: s.pwr, dur: s.dur });
+                    Game.log(`${this.e.n} UŻYWA ${s.n}!`, "orange");
+                    Game.log(`NAŁOŻONO ${s.effect.toUpperCase()}!`, "orange");
                 }
-                ef.rem--;
-            });
-
-            if (Game.p.passives.includes('overclock')) {
-                Game.p.hp -= 5; this.pop(5, 'player');
-                Game.log("OVERCLOCK pobiera 5 HP", "#bc00ff");
+                dmg += 5;
+            } else {
+                Game.log(`${this.e.n} ATAKUJE: ${Math.floor(dmg)}`, "#ff3c3c");
             }
 
-            Game.p.effects = Game.p.effects.filter(ef => ef.rem > 0);
+            Game.p.hp -= dmg;
+            this.pop(Math.floor(dmg), 'player');
+
+            Game.processEffects();
             if (Game.p.hp <= 0) Game.gameOver();
             Game.sync();
-            this.update();
-        }, 400);
+        }, 500);
     },
 
     win() {
-        let rew = (80 + Game.p.lvl * 20) * (Game.p.passives.includes('rich') ? 1.8 : (Game.p.passives.includes('scavenger') ? 1.1 : 1));
-        Game.p.gold += rew;
-        Game.log(`ZWYCIĘSTWO: +${Math.floor(rew)}C`, "gold");
-        Game.p.lvl++; Game.p.maxHp += 15; Game.p.atk += 3; Game.p.effects = [];
-        if (this.e.boss) { Game.p.floor++; Game.log("NOWE PIĘTRO!", "#bc00ff"); }
-        Shop.refreshOffer();
+        let isBoss = this.e.n.includes("BOSS");
+        let goldWin = (150 + (Game.p.floor * 30)) * (isBoss ? 3 : 1);
+        if (Game.p.passives.includes('rich')) goldWin *= 1.8;
+
+        Game.p.gold += goldWin;
+        Game.p.exp += 50 + (Game.p.lvl * 10);
+        Game.log(`ZWYCIĘSTWO! +${Math.floor(goldWin)}C`, "gold");
+
+        if (isBoss) { Game.p.floor++; Game.p.killsOnFloor = 0; }
+        else { Game.p.killsOnFloor++; }
+
+        if (Game.p.exp >= Game.p.nextLvlExp) Game.levelUp();
         this.spawn();
         Game.sync();
     },
 
-    heal() {
-        if (Game.p.gold >= 100) {
-            Game.p.gold -= 100;
-            Game.p.hp = Math.min(Game.p.maxHp + (Game.p.passives.includes('tank') ? 50 : 0), Game.p.hp + 150);
-            Game.log("NAPRAWIONO USZKODZENIA", "#00ff88");
-            Game.sync();
-        }
-    },
-
-    pop(v, id) {
+    pop(val, target) {
+        const view = document.getElementById('battle-view');
+        if (!view) return;
         const p = document.createElement('div');
-        p.className = 'dmg'; p.innerText = '-' + Math.floor(v);
-        document.getElementById(id).appendChild(p);
-        setTimeout(() => p.remove(), 400);
+        p.className = 'dmg';
+        p.innerText = val;
+        p.style.left = target === 'player' ? '20%' : '70%';
+        p.style.top = '40%';
+        view.appendChild(p);
+        setTimeout(() => p.remove(), 800);
     }
 };
 

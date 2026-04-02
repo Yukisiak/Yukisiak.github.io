@@ -9,55 +9,86 @@
 </head>
 
 <body>
-
     <div id="screen">
         <header>
             <div class="stat">FLOOR:<span id="h-floor">1</span></div>
-            <div class="stat">LVL:<span id="h-lvl">1</span></div>
             <div class="stat">GOLD:<span id="h-gold">250</span></div>
             <div class="stat">HP:<span id="h-hp-text">100/100</span></div>
         </header>
 
-        <div id="battle-view">
-            <div class="unit" id="player">
-                <div class="pixel-hp">
-                    <div id="p-hp-fill" class="fill-p"></div>
+        <div id="main-game-area">
+            <div id="battle-view-container">
+                <div id="battle-view">
+                    <div class="unit" id="player">
+                        <div id="p-hp-val" style="font-size: 12px; margin-bottom: 2px;">100/100</div>
+                        <div class="pixel-hp">
+                            <div id="p-hp-fill" class="fill-p"></div>
+                        </div>
+                        <div class="pixel-sprite hero">
+                            <div class="head"></div>
+                            <div class="body"></div>
+                            <div class="sword"></div>
+                        </div>
+                        <div class="u-name">HERO_UNIT</div>
+                    </div>
+
+                    <div class="vs-sign">VS</div>
+
+                    <div class="unit" id="enemy">
+                        <div id="e-hp-val" style="font-size: 12px; margin-bottom: 2px;">80/80</div>
+                        <div class="pixel-hp">
+                            <div id="e-hp-fill" class="fill-e"></div>
+                        </div>
+                        <div class="pixel-sprite goblin">
+                            <div class="g-ear-l"></div>
+                            <div class="g-ear-r"></div>
+                            <div class="g-head"></div>
+                        </div>
+                        <div class="u-name" id="e-name">DRON</div>
+                    </div>
                 </div>
-                <div class="pixel-sprite hero">
-                    <div class="head"></div>
-                    <div class="body"></div>
-                    <div class="sword"></div>
-                </div>
-                <div class="u-name">CYBER_KNIGHT</div>
+
+                <footer>
+                    <div class="footer-content">
+                        <div class="log-column">
+                            <div class="log-header">SYSTEM_LOGS</div>
+                            <div id="log-box" class="log-container"></div>
+                        </div>
+                        <div class="controls-column">
+                            <div class="cheat-row">
+                                <input type="text" id="cheat-input" placeholder="ENTER_CODE..."
+                                    onkeydown="if(event.key==='Enter') Game.cheat(this)">
+                            </div>
+                            <div class="btns-grid">
+                                <button class="p-btn p-purple" onclick="Combat.hit('SPELL')">CAST_SPELL</button>
+                                <button class="p-btn" onclick="Combat.hit('HEAVY')">PHYSICAL_HIT</button>
+                                <button class="p-btn p-green" onclick="Game.heal()">REPAIR (50C)</button>
+                                <button class="p-btn p-purple" onclick="Shop.open()">BLACK_MARKET</button>
+                            </div>
+                        </div>
+                    </div>
+                </footer>
             </div>
 
-            <div class="vs-sign">VS</div>
-
-            <div class="unit" id="enemy">
-                <div class="pixel-hp">
-                    <div id="e-hp-fill" class="fill-e"></div>
+            <aside id="stats-panel">
+                <div class="panel-section">
+                    <h3>CHARACTER_DATA</h3>
+                    <div class="s-row">LEVEL: <span id="s-lvl">1</span></div>
+                    <div class="exp-bar">
+                        <div id="s-exp-fill"></div>
+                    </div>
+                    <div class="s-row">ATK: <span id="s-atk">10</span></div>
+                    <div class="s-row">AP: <span id="s-ap">20</span></div>
+                    <div class="s-row">DEF: <span id="s-def">8</span></div>
                 </div>
-                <div class="pixel-sprite goblin" id="e-sprite">
-                    <div class="g-ear-l"></div>
-                    <div class="g-ear-r"></div>
-                    <div class="g-head"></div>
-                    <div class="g-eyes"></div>
+                <div class="panel-section">
+                    <h3>ACTIVE_STATUS</h3>
+                    <div id="status-list">
+                        <div class="no-status">CLEAR</div>
+                    </div>
                 </div>
-                <div class="u-name" id="e-name">---</div>
-            </div>
+            </aside>
         </div>
-
-        <footer>
-            <div class="log-container" id="log-box"></div>
-            <div class="controls">
-                <button class="p-btn" onclick="Combat.hit('LIGHT')">SLASH</button>
-                <button class="p-btn" onclick="Combat.hit('HEAVY')">SMASH</button>
-                <button class="p-btn p-green" onclick="Combat.heal()">REPAIR (50C)</button>
-                <button class="p-btn p-purple" onclick="Shop.open()">MARKET</button>
-                <input type="text" id="cheat-input" placeholder="Wpisz CMD..."
-                    onkeydown="if(event.key==='Enter') Game.cheat(this.value)">
-            </div>
-        </footer>
     </div>
 
     <div id="shop-modal" class="modal">
@@ -65,24 +96,33 @@
             <div class="m-header"
                 style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px;">
                 <span style="font-size: 1.2rem; color: #bc00ff; font-weight: bold;">BLACK_MARKET</span>
-                <span style="color: #ffae00; font-size: 1.1rem;">PORTFEL: $<b id="shop-gold-display">0</b></span>
-                <button onclick="Shop.close()" class="p-btn"
-                    style="padding: 2px 12px; border-color: #f00; color: #f00;">X</button>
+                <button onclick="Shop.close()" class="p-btn" style="color: #f00;">X</button>
             </div>
-
             <div id="shop-tabs">
                 <button class="p-btn" onclick="Shop.draw('GEAR')">EQUIPMENT</button>
                 <button class="p-btn" onclick="Shop.draw('SKILL')">PASSIVES</button>
+                <button class="p-btn" onclick="Shop.draw('SPELLS')">SPELLS</button>
             </div>
-
             <div id="shop-items"></div>
+        </div>
+    </div>
+
+    <div id="death-screen" class="modal">
+        <div class="modal-pix" style="text-align: center; border-color: #f00;">
+            <h1 style="color: #f00;">SYSTEM_FAILURE</h1>
+            <p>UNIT DESTROYED</p>
+            <div style="margin: 20px 0; background: #000; padding: 15px;">
+                LVL: <span id="death-lvl">1</span> | FLOOR: <span id="death-floor">1</span>
+            </div>
+            <button class="p-btn" onclick="location.reload()">REBOOT_SYSTEM</button>
         </div>
     </div>
 
     <script src="database.js"></script>
     <script src="rpg_engine.js"></script>
     <script src="rpg_core.js"></script>
-
 </body>
+
+
 
 </html>
