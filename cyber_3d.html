@@ -140,6 +140,7 @@
         let enemies = [], walls = [], pickups = [];
         let stats = { hp: 100, ammo: 40, score: 0, kills: 0, threat: 1, dead: false };
 
+
         // Mapa 16x16 - Środek [7][7] do [8][8] musi być PUSTY (same zera)
         const map = [
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -216,10 +217,27 @@
                 const k = e.key.toLowerCase();
                 if (k === 'w') move.f = false; if (k === 's') move.b = false; if (k === 'a') move.l = false; if (k === 'd') move.r = false;
             };
-
+            camera.rotation.order = 'YXZ';
             document.addEventListener('mousedown', shoot);
+            // Dodaj te zmienne na początku skryptu (poza funkcjami)
+            let pitch = 0;
+            const MAX_PITCH = Math.PI / 2.1; // Skrajny kąt patrzenia (prawie 90 stopni)
+
+            // Zmodyfikuj nasłuchiwanie zdarzenia mousemove
             document.addEventListener('mousemove', (e) => {
-                if (document.pointerLockElement) camera.rotation.y -= e.movementX * 0.0025;
+                if (document.pointerLockElement === document.body) {
+                    // Obrót lewo-prawo (oś Y) - bez zmian
+                    camera.rotation.y -= e.movementX * 0.002;
+
+                    // Obrót góra-dół (oś X) z ograniczeniem
+                    pitch -= e.movementY * 0.002;
+
+                    // Blokada: nie pozwól patrzeć bardziej niż pionowo w górę/dół
+                    if (pitch > MAX_PITCH) pitch = MAX_PITCH;
+                    if (pitch < -MAX_PITCH) pitch = -MAX_PITCH;
+
+                    camera.rotation.x = pitch;
+                }
             });
 
             raycaster = new THREE.Raycaster();
