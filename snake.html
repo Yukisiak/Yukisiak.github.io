@@ -16,10 +16,10 @@
             --obs: #ffcc00;
             --border: #2d77cc;
             --grid-color: rgba(0, 212, 255, 0.1);
-            /* Nowe kolory owoców */
             --f-rare: #00d4ff;
             --f-shrink: #39ff14;
             --f-gold: #ffcc00;
+            --slowmo: #00ffff;
         }
 
         body {
@@ -171,6 +171,10 @@
             background: var(--accent) !important;
             color: black !important;
         }
+        
+        #s-slow.active {
+            background: var(--slowmo) !important;
+        }
     </style>
 </head>
 
@@ -205,7 +209,7 @@
 
     <div class="skills">
         <div id="s-ghost" class="skill"><b>Q: GHOST</b></div>
-        <div id="s-nitro" class="skill"><b>E: NITRO</b></div>
+        <div id="s-slow" class="skill"><b>E: SLOW</b></div>
     </div>
 
     <script>
@@ -224,12 +228,11 @@
         let state = {
             score: 0, best: localStorage.getItem('nb') || 0, level: 1, xp: 0, xpReq: 3,
             energy: 0, active: false, last: 0, timer: 0, speed: 0.16,
-            drunk: false, heavy: false, ghost: false, nitro: false,
+            drunk: false, heavy: false, ghost: false, slowmo: false,
             themeIdx: 0
         };
 
         let snake = { body: [], dir: { x: 1, y: 0 }, next: { x: 1, y: 0 }, prev: [] };
-        // world.food teraz przechowuje obiekty {x, y, type}
         let world = { food: [], magic: null, obs: [], particles: [] };
 
         document.getElementById('best').innerText = state.best;
@@ -252,12 +255,11 @@
             while (true) {
                 p = { x: Math.floor(Math.random() * GRID), y: Math.floor(Math.random() * GRID) };
                 if (!snake.body.some(s => s.x === p.x && s.y === p.y) && !world.obs.some(o => o.x === p.x && o.y === p.y)) {
-                    // Losowanie typu owocu
                     const r = Math.random();
                     let type = "normal";
-                    if (r < 0.05) type = "rare";      // 5% na diamentowy
-                    else if (r < 0.12) type = "shrink"; // 7% na skracający
-                    else if (r < 0.20) type = "gold";   // 8% na złoty
+                    if (r < 0.05) type = "rare";
+                    else if (r < 0.12) type = "shrink";
+                    else if (r < 0.20) type = "gold";
                     
                     return { ...p, type };
                 }
@@ -275,7 +277,7 @@
         }
 
         function init() {
-            state = { ...state, score: 0, level: 1, xp: 0, xpReq: 3, energy: 0, speed: 0.16, drunk: false, heavy: false, ghost: false, nitro: false, active: true, themeIdx: 0 };
+            state = { ...state, score: 0, level: 1, xp: 0, xpReq: 3, energy: 0, speed: 0.16, drunk: false, heavy: false, ghost: false, slowmo: false, active: true, themeIdx: 0 };
             snake.body = [{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }];
             snake.dir = { x: 1, y: 0 }; snake.next = { x: 1, y: 0 };
             snake.prev = snake.body.map(p => ({ ...p }));
@@ -308,9 +310,8 @@
             if (currentFood.x === head.x && currentFood.y === head.y) {
                 ate = true;
                 
-                // Logika zależna od typu owocu
                 if (currentFood.type === "normal") {
-                    state.score += state.nitro ? 40 : 20;
+                    state.score += 20;
                     state.energy = Math.min(100, state.energy + 15);
                     burst(head.x, head.y, "#ff3131");
                 } else if (currentFood.type === "rare") {
@@ -320,7 +321,6 @@
                     burst(head.x, head.y, "#00d4ff");
                 } else if (currentFood.type === "shrink") {
                     state.score += 30;
-                    // Skracanie węża (min 3 segmenty)
                     if (snake.body.length > 5) {
                         snake.body.pop(); snake.body.pop();
                     }
@@ -328,9 +328,9 @@
                     burst(head.x, head.y, "#39ff14");
                 } else if (currentFood.type === "gold") {
                     state.score += 50;
-                    state.nitro = true;
-                    setTimeout(() => state.nitro = false, 5000);
-                    toast("ZŁOTY SPEED!");
+                    state.slowmo = true;
+                    setTimeout(() => state.slowmo = false, 5000);
+                    toast("ZŁOTE SLOWMO!");
                     burst(head.x, head.y, "#ffcc00");
                 }
 
@@ -387,11 +387,9 @@
             });
             ctx.globalAlpha = 1;
 
-            // OBS
             ctx.shadowBlur = 10; ctx.shadowColor = "#ffcc00"; ctx.fillStyle = "#ffcc00";
             world.obs.forEach(o => ctx.fillRect(o.x * TILE + 4, o.y * TILE + 4, TILE - 8, TILE - 8));
 
-            // MULTI-FOOD DRAWING
             world.food.forEach(f => {
                 let color = "#ff3131";
                 if (f.type === "rare") color = "#00d4ff";
@@ -404,15 +402,15 @@
                 ctx.fill();
             });
 
-            // MAGIC
             if (world.magic) {
                 ctx.shadowBlur = 20; ctx.shadowColor = "#8f48f5"; ctx.fillStyle = "#8f48f5";
                 ctx.beginPath(); ctx.arc(world.magic.x * TILE + TILE / 2, world.magic.y * TILE + TILE / 2, TILE / 2.5, 0, Math.PI * 2); ctx.fill();
             }
 
-            // SNAKE
             ctx.shadowBlur = 15;
-            const sColor = state.ghost ? "#ffffff" : (state.nitro ? "#ff8c00" : getComputedStyle(document.documentElement).getPropertyValue('--snake'));
+            let sColor = state.ghost ? "#ffffff" : getComputedStyle(document.documentElement).getPropertyValue('--snake');
+            if (state.slowmo) sColor = "#00ffff";
+            
             ctx.shadowColor = sColor;
             ctx.fillStyle = sColor;
 
@@ -443,16 +441,20 @@
             document.getElementById('e-fill').style.width = state.energy + "%";
             document.getElementById('xp-fill').style.width = (state.xp / state.xpReq * 100) + "%";
             document.getElementById('s-ghost').classList.toggle('ready', state.energy >= 50);
-            document.getElementById('s-nitro').classList.toggle('ready', state.energy >= 40);
+            document.getElementById('s-slow').classList.toggle('ready', state.energy >= 40);
             document.getElementById('s-ghost').classList.toggle('active', state.ghost);
-            document.getElementById('s-nitro').classList.toggle('active', state.nitro);
+            document.getElementById('s-slow').classList.toggle('active', state.slowmo);
         }
 
         function loop(t) {
             if (!state.active) return;
             const dt = (t - state.last) / 1000; state.last = t;
             state.timer += dt;
-            let s = state.heavy ? state.speed * 2 : (state.nitro ? state.speed * 0.6 : state.speed);
+            
+            let s = state.speed;
+            if (state.heavy) s *= 2;
+            if (state.slowmo) s *= 2.5; // Zwiększenie interwału = spowolnienie
+            
             if (state.timer >= s) { update(); state.timer = 0; }
             draw(state.timer / s);
             requestAnimationFrame(loop);
@@ -460,6 +462,13 @@
 
         window.onkeydown = e => {
             const k = e.key.toLowerCase();
+            
+            // Restart na Spację
+            if (e.code === 'Space' && !state.active) {
+                init();
+                return;
+            }
+
             let m = null;
             if (k === 'w' || k === 'arrowup') m = { x: 0, y: -1 }; if (k === 's' || k === 'arrowdown') m = { x: 0, y: 1 };
             if (k === 'a' || k === 'arrowleft') m = { x: -1, y: 0 }; if (k === 'd' || k === 'arrowright') m = { x: 1, y: 0 };
@@ -468,7 +477,7 @@
                 if (m.x !== -snake.dir.x || m.y !== -snake.dir.y) snake.next = m;
             }
             if (k === 'q' && state.energy >= 50 && !state.ghost) { state.energy -= 50; state.ghost = true; setTimeout(() => state.ghost = false, 5000); }
-            if (k === 'e' && state.energy >= 40 && !state.nitro) { state.energy -= 40; state.nitro = true; setTimeout(() => state.nitro = false, 5000); }
+            if (k === 'e' && state.energy >= 40 && !state.slowmo) { state.energy -= 40; state.slowmo = true; setTimeout(() => state.slowmo = false, 5000); }
         };
 
         document.getElementById('start-btn').onclick = init;
@@ -510,10 +519,10 @@
             }
         });
 
-        document.getElementById('s-nitro').addEventListener('touchstart', (e) => {
-            if (state.energy >= 40 && !state.nitro) { 
-                state.energy -= 40; state.nitro = true; 
-                setTimeout(() => state.nitro = false, 5000); 
+        document.getElementById('s-slow').addEventListener('touchstart', (e) => {
+            if (state.energy >= 40 && !state.slowmo) { 
+                state.energy -= 40; state.slowmo = true; 
+                setTimeout(() => state.slowmo = false, 5000); 
             }
         });
     </script>
