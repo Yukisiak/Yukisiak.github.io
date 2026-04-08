@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Snake: Skins & High Contrast</title>
+    <title>Neon Snake: Multi-Fruits</title>
     <style>
         :root {
             --bg: #020408;
@@ -16,6 +16,10 @@
             --obs: #ffcc00;
             --border: #2d77cc;
             --grid-color: rgba(0, 212, 255, 0.1);
+            /* Nowe kolory owoców */
+            --f-rare: #00d4ff;
+            --f-shrink: #39ff14;
+            --f-gold: #ffcc00;
         }
 
         body {
@@ -67,41 +71,6 @@
             max-width: 600px;
             margin-bottom: 10px;
         }
-        /* Ukrywamy sterowanie na komputerach, pokazujemy na dotyku */
-.touch-controls {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    margin-top: 20px;
-    gap: 10px;
-    user-select: none;
-}
-
-.row { display: flex; gap: 10px; }
-
-.t-btn {
-    width: 65px;
-    height: 65px;
-    padding: 0;
-    font-size: 1.5rem;
-    background: rgba(45, 119, 204, 0.2);
-    border: 2px solid var(--border);
-    color: white;
-    box-shadow: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.t-btn:active {
-    background: var(--accent);
-    color: black;
-}
-
-@media (max-width: 800px) {
-    .touch-controls { display: flex; }
-    .skills { margin-top: 10px; }
-}
 
         .bar-outer {
             width: 100%;
@@ -245,12 +214,11 @@
         const GRID = 20;
         const TILE = canvas.width / GRID;
 
-        // --- SYSTEM SKINÓW I KONTRASTU ---
         const THEMES = [
-            { snake: '#00ff88', bg: '#020408', grid: 'rgba(0, 255, 136, 0.1)' }, // Klasyk
-            { snake: '#00d4ff', bg: '#080202', grid: 'rgba(0, 212, 255, 0.1)' }, // Cyjan na ciemnym czerwonym
-            { snake: '#ffff00', bg: '#050008', grid: 'rgba(255, 255, 0, 0.1)' }, // Żółty na fiolecie
-            { snake: '#ff00ff', bg: '#000805', grid: 'rgba(255, 0, 255, 0.1)' }  // Róż na ciemnej zieleni
+            { snake: '#00ff88', bg: '#020408', grid: 'rgba(0, 255, 136, 0.1)' },
+            { snake: '#00d4ff', bg: '#080202', grid: 'rgba(0, 212, 255, 0.1)' },
+            { snake: '#ffff00', bg: '#050008', grid: 'rgba(255, 255, 0, 0.1)' },
+            { snake: '#ff00ff', bg: '#000805', grid: 'rgba(255, 0, 255, 0.1)' }
         ];
 
         let state = {
@@ -261,6 +229,7 @@
         };
 
         let snake = { body: [], dir: { x: 1, y: 0 }, next: { x: 1, y: 0 }, prev: [] };
+        // world.food teraz przechowuje obiekty {x, y, type}
         let world = { food: [], magic: null, obs: [], particles: [] };
 
         document.getElementById('best').innerText = state.best;
@@ -282,7 +251,16 @@
             let p;
             while (true) {
                 p = { x: Math.floor(Math.random() * GRID), y: Math.floor(Math.random() * GRID) };
-                if (!snake.body.some(s => s.x === p.x && s.y === p.y) && !world.obs.some(o => o.x === p.x && o.y === p.y)) return p;
+                if (!snake.body.some(s => s.x === p.x && s.y === p.y) && !world.obs.some(o => o.x === p.x && o.y === p.y)) {
+                    // Losowanie typu owocu
+                    const r = Math.random();
+                    let type = "normal";
+                    if (r < 0.05) type = "rare";      // 5% na diamentowy
+                    else if (r < 0.12) type = "shrink"; // 7% na skracający
+                    else if (r < 0.20) type = "gold";   // 8% na złoty
+                    
+                    return { ...p, type };
+                }
             }
         }
 
@@ -325,24 +303,50 @@
             snake.body.unshift(head);
 
             let ate = false;
-            if (world.food[0].x === head.x && world.food[0].y === head.y) {
-                state.score += state.nitro ? 40 : 20;
-                state.energy = Math.min(100, state.energy + 15);
-                state.xp++; world.food = [spawn()];
-                burst(head.x, head.y, "var(--food)");
+            let currentFood = world.food[0];
 
-                // Zwiększona szansa na Magic Fruit (45%)
+            if (currentFood.x === head.x && currentFood.y === head.y) {
+                ate = true;
+                
+                // Logika zależna od typu owocu
+                if (currentFood.type === "normal") {
+                    state.score += state.nitro ? 40 : 20;
+                    state.energy = Math.min(100, state.energy + 15);
+                    burst(head.x, head.y, "#ff3131");
+                } else if (currentFood.type === "rare") {
+                    state.score += 100;
+                    state.energy = Math.min(100, state.energy + 40);
+                    toast("DIAMENT! +100");
+                    burst(head.x, head.y, "#00d4ff");
+                } else if (currentFood.type === "shrink") {
+                    state.score += 30;
+                    // Skracanie węża (min 3 segmenty)
+                    if (snake.body.length > 5) {
+                        snake.body.pop(); snake.body.pop();
+                    }
+                    toast("SKRÓCENIE!");
+                    burst(head.x, head.y, "#39ff14");
+                } else if (currentFood.type === "gold") {
+                    state.score += 50;
+                    state.nitro = true;
+                    setTimeout(() => state.nitro = false, 5000);
+                    toast("ZŁOTY SPEED!");
+                    burst(head.x, head.y, "#ffcc00");
+                }
+
+                state.xp++; 
+                world.food = [spawn()];
+
                 if (!world.magic && Math.random() < 0.45) world.magic = spawn();
 
                 if (state.xp >= state.xpReq) {
                     state.level++; state.xp = 0; state.xpReq++;
                     state.speed = Math.max(0.07, state.speed - 0.01);
                     world.obs.push(spawn());
-                    state.themeIdx = (state.themeIdx + 1) % THEMES.length; // Zmiana skinu/tematu
+                    state.themeIdx = (state.themeIdx + 1) % THEMES.length;
                     applyTheme();
                     toast("LEVEL UP!");
                 }
-                ate = true;
             } else if (world.magic && head.x === world.magic.x && head.y === world.magic.y) {
                 world.magic = null; ate = true; state.score += 50;
                 burst(head.x, head.y, "var(--magic)");
@@ -368,7 +372,6 @@
         function draw(interp) {
             ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 600, 600);
 
-            // GRID (Dynamiczny kolor)
             ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid-color');
             ctx.lineWidth = 1;
             for (let i = 0; i <= GRID; i++) {
@@ -376,7 +379,6 @@
                 ctx.beginPath(); ctx.moveTo(0, i * TILE); ctx.lineTo(600, i * TILE); ctx.stroke();
             }
 
-            // PARTICLES
             world.particles.forEach((p, i) => {
                 p.life -= 0.02; p.x += p.vx; p.y += p.vy;
                 if (p.life <= 0) world.particles.splice(i, 1);
@@ -385,21 +387,30 @@
             });
             ctx.globalAlpha = 1;
 
-            // OBS (Żółty)
+            // OBS
             ctx.shadowBlur = 10; ctx.shadowColor = "#ffcc00"; ctx.fillStyle = "#ffcc00";
             world.obs.forEach(o => ctx.fillRect(o.x * TILE + 4, o.y * TILE + 4, TILE - 8, TILE - 8));
 
-            // FOOD (Czerwony)
-            ctx.shadowBlur = 15; ctx.shadowColor = "#ff3131"; ctx.fillStyle = "#ff3131";
-            world.food.forEach(f => { ctx.beginPath(); ctx.arc(f.x * TILE + TILE / 2, f.y * TILE + TILE / 2, TILE / 3, 0, Math.PI * 2); ctx.fill(); });
+            // MULTI-FOOD DRAWING
+            world.food.forEach(f => {
+                let color = "#ff3131";
+                if (f.type === "rare") color = "#00d4ff";
+                if (f.type === "shrink") color = "#39ff14";
+                if (f.type === "gold") color = "#ffcc00";
 
-            // MAGIC (Fiolet)
+                ctx.shadowBlur = 15; ctx.shadowColor = color; ctx.fillStyle = color;
+                ctx.beginPath(); 
+                ctx.arc(f.x * TILE + TILE / 2, f.y * TILE + TILE / 2, TILE / 3, 0, Math.PI * 2); 
+                ctx.fill();
+            });
+
+            // MAGIC
             if (world.magic) {
-                ctx.shadowBlur = 20; ctx.shadowColor = "#ff3131"; ctx.fillStyle = "#ff3131";
+                ctx.shadowBlur = 20; ctx.shadowColor = "#8f48f5"; ctx.fillStyle = "#8f48f5";
                 ctx.beginPath(); ctx.arc(world.magic.x * TILE + TILE / 2, world.magic.y * TILE + TILE / 2, TILE / 2.5, 0, Math.PI * 2); ctx.fill();
             }
 
-            // SNAKE (Kolor skina)
+            // SNAKE
             ctx.shadowBlur = 15;
             const sColor = state.ghost ? "#ffffff" : (state.nitro ? "#ff8c00" : getComputedStyle(document.documentElement).getPropertyValue('--snake'));
             ctx.shadowColor = sColor;
@@ -461,70 +472,50 @@
         };
 
         document.getElementById('start-btn').onclick = init;
-// --- LOGIKA SWIPE (TYLKO GESTY) ---
-let touchStartX = 0;
-let touchStartY = 0;
 
-// Blokowanie przesuwania strony palcem podczas gry
-window.addEventListener('touchmove', function(e) {
-    if (state.active) e.preventDefault();
-}, { passive: false });
+        let touchStartX = 0;
+        let touchStartY = 0;
 
-window.addEventListener('touchstart', function(e) {
-    touchStartX = e.changedTouches[0].screenX;
-    touchStartY = e.changedTouches[0].screenY;
-}, { passive: false });
+        window.addEventListener('touchmove', function(e) {
+            if (state.active) e.preventDefault();
+        }, { passive: false });
 
-window.addEventListener('touchend', function(e) {
-    if (!state.active) return;
+        window.addEventListener('touchstart', function(e) {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: false });
 
-    let touchEndX = e.changedTouches[0].screenX;
-    let touchEndY = e.changedTouches[0].screenY;
+        window.addEventListener('touchend', function(e) {
+            if (!state.active) return;
+            let dx = e.changedTouches[0].screenX - touchStartX;
+            let dy = e.changedTouches[0].screenY - touchStartY;
+            const threshold = 20;
 
-    let dx = touchEndX - touchStartX;
-    let dy = touchEndY - touchStartY;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (Math.abs(dx) > threshold) setDirection({ x: dx > 0 ? 1 : -1, y: 0 });
+            } else {
+                if (Math.abs(dy) > threshold) setDirection({ x: 0, y: dy > 0 ? 1 : -1 });
+            }
+        }, { passive: false });
 
-    // Czułość: ruch musi mieć co najmniej 20 pikseli
-    const threshold = 20;
-
-    if (Math.abs(dx) > Math.abs(dy)) {
-        // Ruch poziomy
-        if (Math.abs(dx) > threshold) {
-            let m = { x: dx > 0 ? 1 : -1, y: 0 };
-            setDirection(m);
+        function setDirection(m) {
+            if (state.drunk) m = { x: -m.x, y: -m.y };
+            if (m.x !== -snake.dir.x || m.y !== -snake.dir.y) snake.next = m;
         }
-    } else {
-        // Ruch pionowy
-        if (Math.abs(dy) > threshold) {
-            let m = { x: 0, y: dy > 0 ? 1 : -1 };
-            setDirection(m);
-        }
-    }
-}, { passive: false });
 
-// Pomocnicza funkcja zmiany kierunku z logiką "pijanego" i blokadą zawracania
-function setDirection(m) {
-    if (state.drunk) m = { x: -m.x, y: -m.y };
-    // Nie pozwól zawrócić w miejscu (uderzyć we własną szyję)
-    if (m.x !== -snake.dir.x || m.y !== -snake.dir.y) {
-        snake.next = m;
-    }
-}
+        document.getElementById('s-ghost').addEventListener('touchstart', (e) => {
+            if (state.energy >= 50 && !state.ghost) { 
+                state.energy -= 50; state.ghost = true; 
+                setTimeout(() => state.ghost = false, 5000); 
+            }
+        });
 
-// Obsługa skilli przez dotknięcie ich kart na dole
-document.getElementById('s-ghost').addEventListener('touchstart', (e) => {
-    if (state.energy >= 50 && !state.ghost) { 
-        state.energy -= 50; state.ghost = true; 
-        setTimeout(() => state.ghost = false, 5000); 
-    }
-});
-
-document.getElementById('s-nitro').addEventListener('touchstart', (e) => {
-    if (state.energy >= 40 && !state.nitro) { 
-        state.energy -= 40; state.nitro = true; 
-        setTimeout(() => state.nitro = false, 5000); 
-    }
-});
+        document.getElementById('s-nitro').addEventListener('touchstart', (e) => {
+            if (state.energy >= 40 && !state.nitro) { 
+                state.energy -= 40; state.nitro = true; 
+                setTimeout(() => state.nitro = false, 5000); 
+            }
+        });
     </script>
 </body>
 
