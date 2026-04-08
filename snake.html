@@ -12,7 +12,7 @@
             --accent: #00d4ff;
             --snake: #00ff88;
             --food: #ff3131;
-            --magic: #d000ff;
+            --magic: #8f48f5;
             --obs: #ffcc00;
             --border: #2d77cc;
             --grid-color: rgba(0, 212, 255, 0.1);
@@ -67,6 +67,41 @@
             max-width: 600px;
             margin-bottom: 10px;
         }
+        /* Ukrywamy sterowanie na komputerach, pokazujemy na dotyku */
+.touch-controls {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 20px;
+    gap: 10px;
+    user-select: none;
+}
+
+.row { display: flex; gap: 10px; }
+
+.t-btn {
+    width: 65px;
+    height: 65px;
+    padding: 0;
+    font-size: 1.5rem;
+    background: rgba(45, 119, 204, 0.2);
+    border: 2px solid var(--border);
+    color: white;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.t-btn:active {
+    background: var(--accent);
+    color: black;
+}
+
+@media (max-width: 800px) {
+    .touch-controls { display: flex; }
+    .skills { margin-top: 10px; }
+}
 
         .bar-outer {
             width: 100%;
@@ -360,7 +395,7 @@
 
             // MAGIC (Fiolet)
             if (world.magic) {
-                ctx.shadowBlur = 20; ctx.shadowColor = "#d000ff"; ctx.fillStyle = "#d000ff";
+                ctx.shadowBlur = 20; ctx.shadowColor = "#ff3131"; ctx.fillStyle = "#ff3131";
                 ctx.beginPath(); ctx.arc(world.magic.x * TILE + TILE / 2, world.magic.y * TILE + TILE / 2, TILE / 2.5, 0, Math.PI * 2); ctx.fill();
             }
 
@@ -426,6 +461,70 @@
         };
 
         document.getElementById('start-btn').onclick = init;
+// --- LOGIKA SWIPE (TYLKO GESTY) ---
+let touchStartX = 0;
+let touchStartY = 0;
+
+// Blokowanie przesuwania strony palcem podczas gry
+window.addEventListener('touchmove', function(e) {
+    if (state.active) e.preventDefault();
+}, { passive: false });
+
+window.addEventListener('touchstart', function(e) {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+}, { passive: false });
+
+window.addEventListener('touchend', function(e) {
+    if (!state.active) return;
+
+    let touchEndX = e.changedTouches[0].screenX;
+    let touchEndY = e.changedTouches[0].screenY;
+
+    let dx = touchEndX - touchStartX;
+    let dy = touchEndY - touchStartY;
+
+    // Czułość: ruch musi mieć co najmniej 20 pikseli
+    const threshold = 20;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+        // Ruch poziomy
+        if (Math.abs(dx) > threshold) {
+            let m = { x: dx > 0 ? 1 : -1, y: 0 };
+            setDirection(m);
+        }
+    } else {
+        // Ruch pionowy
+        if (Math.abs(dy) > threshold) {
+            let m = { x: 0, y: dy > 0 ? 1 : -1 };
+            setDirection(m);
+        }
+    }
+}, { passive: false });
+
+// Pomocnicza funkcja zmiany kierunku z logiką "pijanego" i blokadą zawracania
+function setDirection(m) {
+    if (state.drunk) m = { x: -m.x, y: -m.y };
+    // Nie pozwól zawrócić w miejscu (uderzyć we własną szyję)
+    if (m.x !== -snake.dir.x || m.y !== -snake.dir.y) {
+        snake.next = m;
+    }
+}
+
+// Obsługa skilli przez dotknięcie ich kart na dole
+document.getElementById('s-ghost').addEventListener('touchstart', (e) => {
+    if (state.energy >= 50 && !state.ghost) { 
+        state.energy -= 50; state.ghost = true; 
+        setTimeout(() => state.ghost = false, 5000); 
+    }
+});
+
+document.getElementById('s-nitro').addEventListener('touchstart', (e) => {
+    if (state.energy >= 40 && !state.nitro) { 
+        state.energy -= 40; state.nitro = true; 
+        setTimeout(() => state.nitro = false, 5000); 
+    }
+});
     </script>
 </body>
 
