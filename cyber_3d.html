@@ -787,7 +787,7 @@
             { id: 'projectile10', name: 'GLOBAL: +10% POCISKOW', price: 2800, desc: 'Strzelby i serie maja minimum 10% wiecej pociskow.', applies: 'global' },
             { id: 'reload30', name: 'GLOBAL: RELOAD -30%', price: 1900, desc: 'Bronie z magazynkiem przeladowuja szybciej.', applies: 'global' },
             { id: 'crit10', name: 'GLOBAL: KRYTYK 10%', price: 2600, desc: '10% szans na podwojne obrazenia.', applies: 'global' },
-            { id: 'vampire', name: 'GLOBAL: KREW ZA TRAFIENIE', price: 3200, desc: 'Czasem odzyskujesz HP przy trafieniu.', applies: 'global' },
+            { id: 'vampire', name: 'GLOBAL: VAMPIRE', price: 3200, desc: 'Leczy czasem przy trafieniu i zawsze po zabiciu.', applies: 'global' },
             { id: 'pistolPiercing', name: 'PISTOLET: PENETRACJA', price: 1800, desc: 'Pistolet przebija do 3 celow.', weapon: 'pistol' },
             { id: 'rifleMag25', name: 'KARABIN: MAG 25', price: 2800, desc: 'Karabin dostaje magazynek 25.', weapon: 'rifle' },
             { id: 'shotgunHorizontal', name: 'POMPA: HORYZONTAL', price: 3200, desc: 'Srut idzie szeroka linia.', weapon: 'shotgun' },
@@ -820,7 +820,7 @@
             { id: 'frost', name: 'FROST', cost: 150, weapon: 'ice_staff', upgrade: 'iceFreeze', desc: 'Lodownik z mocnym spowolnieniem.' },
             { id: 'railrunner', name: 'RAILRUNNER', cost: 190, weapon: 'railgun', upgrade: 'globalPierce', desc: 'Railgun oraz globalne przebicie.' },
             { id: 'demolition', name: 'DEMOLITION', cost: 180, weapon: 'grenade', upgrade: 'grenadeCluster', desc: 'Granatnik i clusterowe wybuchy.' },
-            { id: 'vampire', name: 'VAMPIRE', cost: 210, weapon: 'boomerang', upgrade: 'vampire', desc: 'Boomerang i leczenie za trafienia.' }
+            { id: 'vampire', name: 'VAMPIRE', cost: 210, weapon: 'boomerang', upgrade: 'vampire', desc: 'Boomerang i leczenie za trafienia oraz zabicia.' }
         ];
 
         function loadMetaState() {
@@ -917,6 +917,22 @@
         function activateBuff(id, durationMs) {
             activeBuffs[id] = Math.max(activeBuffs[id] || 0, Date.now() + durationMs);
             updateWeaponHud();
+        }
+
+        function healPlayer(amount) {
+            if (stats.dead || amount <= 0) return;
+            stats.hp = Math.min(100, stats.hp + amount);
+            const hpEl = document.getElementById('hp');
+            if (hpEl) hpEl.innerText = Math.max(0, Math.ceil(stats.hp));
+        }
+
+        function applyVampireLeech(kind = 'hit', isBossKill = false) {
+            if (!hasUpgrade('vampire')) return;
+            if (kind === 'kill') {
+                healPlayer(isBossKill ? 16 : 6);
+                return;
+            }
+            if (Math.random() < 0.18) healPlayer(1.5);
         }
 
         function getPowerupDuration(id) {
@@ -1545,13 +1561,27 @@
 
             camera.rotation.order = 'YXZ';
             let pitch = 0;
+            let ignoreNextMouseMove = true;
             const MAX_PITCH = Math.PI / 2.2;
+            const MAX_MOUSE_DELTA = 90;
+            const MOUSE_SPIKE_DELTA = 420;
 
             document.addEventListener('mousemove', (e) => {
                 if (document.pointerLockElement === document.body && !isPaused && !inShop) {
+                    if (ignoreNextMouseMove) {
+                        ignoreNextMouseMove = false;
+                        return;
+                    }
+
+                    const rawX = Number.isFinite(e.movementX) ? e.movementX : 0;
+                    const rawY = Number.isFinite(e.movementY) ? e.movementY : 0;
+                    if (Math.abs(rawX) > MOUSE_SPIKE_DELTA || Math.abs(rawY) > MOUSE_SPIKE_DELTA) return;
+
+                    const moveX = Math.max(-MAX_MOUSE_DELTA, Math.min(MAX_MOUSE_DELTA, rawX));
+                    const moveY = Math.max(-MAX_MOUSE_DELTA, Math.min(MAX_MOUSE_DELTA, rawY));
                     const factor = 0.0025 * mouseSensitivity;
-                    camera.rotation.y -= e.movementX * factor;
-                    pitch -= e.movementY * factor;
+                    camera.rotation.y -= moveX * factor;
+                    pitch -= moveY * factor;
                     pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch));
                     camera.rotation.x = pitch;
 
@@ -1563,10 +1593,15 @@
             });
 
             document.addEventListener('pointerlockchange', () => {
+                ignoreNextMouseMove = true;
+                pitch = camera.rotation.x;
                 if (gameStarted && !document.pointerLockElement && !stats.dead && document.getElementById('overlay').style.display === 'none' && !inShop) {
                     pauseGame();
                 }
             });
+
+            window.addEventListener('blur', () => { ignoreNextMouseMove = true; });
+            document.addEventListener('visibilitychange', () => { ignoreNextMouseMove = true; });
 
             document.addEventListener('mousedown', (e) => { if (e.button === 0) isMouseDown = true; });
             document.addEventListener('mouseup', (e) => { if (e.button === 0) isMouseDown = false; });
@@ -1734,7 +1769,7 @@
                 cannonGroup.add(cannonBarrelMesh);
             }
 
-            cannonGroup.position.set(cx, 0, cz);
+            cannonGroup.position.set(cx, getPlatformHeightAt(cx, cz), cz);
             cannonShotsLeft = 20;
             scene.add(cannonGroup);
         }
@@ -1752,7 +1787,7 @@
                 if (cannonBarrelMesh) cannonBarrelMesh.rotation.x = camera.rotation.x;
                 camera.position.x = cannonGroup.position.x;
                 camera.position.z = cannonGroup.position.z;
-                camera.position.y = 1.6;
+                camera.position.y = 1.6 + getPlatformHeightAt(cannonGroup.position.x, cannonGroup.position.z);
                 document.getElementById('weapon-name').innerText = `DZIAŁKO (${cannonShotsLeft}/20 HP)`;
                 document.getElementById('weapon-name').style.color = "#00ffaa";
                 document.getElementById('crosshair').style.borderColor = "#00ffaa";
@@ -2018,7 +2053,9 @@
 
             let hp = Math.floor(baseHp * (1 + (currentWave - 1) * 0.4));
             let shieldHp = type === 'shield' ? Math.floor(6 * (1 + (currentWave - 1) * 0.3)) : 0;
-            const canFly = type === 'stalker' || type === 'spitter' || (type === 'fast' && Math.random() < 0.4);
+            const naturalFlyer = type === 'stalker' || type === 'spitter';
+            const flyingChance = Math.min(0.34, 0.16 + currentWave * 0.01);
+            const canFly = naturalFlyer || Math.random() < flyingChance;
             const flyBaseY = canFly ? scale / 2 + 1.35 + Math.random() * 0.45 : scale / 2;
 
             if (canFly) {
@@ -2035,7 +2072,7 @@
             do {
                 ex = (Math.random() - 0.5) * (SIZE - 8);
                 ez = (Math.random() - 0.5) * (SIZE - 8);
-            } while (isBlocked(ex, ez, 0.8, canFly) || Math.hypot(ex - camera.position.x, ez - camera.position.z) < 10);
+            } while (isBlocked(ex, ez, 0.8, canFly, flyBaseY, canFly) || Math.hypot(ex - camera.position.x, ez - camera.position.z) < 10);
 
             group.position.set(ex, flyBaseY, ez);
             const hpBar = createHPBar();
@@ -2141,7 +2178,7 @@
             scene.add(sprite);
         }
 
-        function createExplosion(pos, radius, damage) {
+        function createExplosion(pos, radius, damage, playerOwned = false) {
             const expMesh = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.8 }));
             expMesh.position.copy(pos);
             scene.add(expMesh);
@@ -2152,6 +2189,7 @@
                 enemies.forEach(e => {
                     if (e.position.distanceTo(pos) <= radius) {
                         e.userData.hp -= damage;
+                        if (playerOwned) applyVampireLeech('hit');
                         updateEnemyHpDisplay(e);
                     }
                 });
@@ -2169,11 +2207,12 @@
             }
         }
 
-        function damageEnemiesInRadius(pos, radius, damage, sourceEnemyId = null) {
+        function damageEnemiesInRadius(pos, radius, damage, sourceEnemyId = null, playerOwned = true) {
             enemies.forEach(e => {
                 if (sourceEnemyId && e.id === sourceEnemyId) return;
                 if (e.position.distanceTo(pos) <= radius) {
                     e.userData.hp -= damage;
+                    if (playerOwned) applyVampireLeech('hit');
                     updateEnemyHpDisplay(e);
                 }
             });
@@ -2316,8 +2355,13 @@
         function getAimTargetPoint(maxDistance = 100) {
             raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
             const targets = [...walls, ...platforms, ...barrels, ...enemies];
+            if (floorMesh) targets.push(floorMesh);
             const intersects = raycaster.intersectObjects(targets, true);
-            return intersects.length > 0 ? intersects[0].point : raycaster.ray.at(maxDistance, new THREE.Vector3());
+            for (let hit of intersects) {
+                if (hit.object === floorMesh && isVoid(hit.point.x, hit.point.z)) continue;
+                return hit.point;
+            }
+            return raycaster.ray.at(maxDistance, new THREE.Vector3());
         }
 
         function getEnemyHitCenter(e) {
@@ -2347,6 +2391,35 @@
             const x = a.x + (b.x - a.x) * t;
             const z = a.z + (b.z - a.z) * t;
             return Math.hypot(x - center.x, z - center.z) <= radius;
+        }
+
+        function getProjectileFloorHeightAt(x, z) {
+            if (isVoid(x, z)) return null;
+            return getPlatformHeightAt(x, z);
+        }
+
+        function getProjectileFloorImpact(a, b) {
+            const steps = 8;
+            let lastDiff = null;
+
+            for (let step = 0; step <= steps; step++) {
+                const t = step / steps;
+                const point = a.clone().lerp(b, t);
+                const floorY = getProjectileFloorHeightAt(point.x, point.z);
+                if (floorY === null) {
+                    lastDiff = null;
+                    continue;
+                }
+
+                const diff = point.y - floorY;
+                if (step > 0 && lastDiff !== null && lastDiff > 0.04 && diff <= 0.04) {
+                    point.y = floorY + 0.04;
+                    return point;
+                }
+                lastDiff = diff;
+            }
+
+            return null;
         }
 
         function handleShooting() {
@@ -2483,9 +2556,9 @@
                 isObstacleCollision(x, z - probe, 0.15);
         }
 
-        function checkFenceCollision(x, z, radius = 0.6, bodyY = 1.7) {
+        function checkFenceCollision(x, z, radius = 0.6, bodyY = 1.7, ignoreJumpableFences = false) {
             for (let f of obstacles) {
-                if (f.userData && f.userData.jumpableFence && bodyY > 2.05) continue;
+                if (f.userData && f.userData.jumpableFence && (ignoreJumpableFences || bodyY > 2.05)) continue;
                 const bbox = new THREE.Box3().setFromObject(f);
                 if (x > bbox.min.x - radius && x < bbox.max.x + radius &&
                     z > bbox.min.z - radius && z < bbox.max.z + radius) return true;
@@ -2500,8 +2573,16 @@
             return false;
         }
 
-        function isBlocked(x, z, radius = 0.8, ignoreVoid = false, bodyY = 1.7) {
-            return isObstacleCollision(x, z, radius) || isBarrelCollision(x, z, radius, bodyY) || checkFenceCollision(x, z, radius, bodyY) || (!ignoreVoid && isVoid(x, z));
+        function isBlocked(x, z, radius = 0.8, ignoreVoid = false, bodyY = 1.7, ignoreJumpableFences = false) {
+            return isObstacleCollision(x, z, radius) || isBarrelCollision(x, z, radius, bodyY) || checkFenceCollision(x, z, radius, bodyY, ignoreJumpableFences) || (!ignoreVoid && isVoid(x, z));
+        }
+
+        function isCannonBlocked(x, z) {
+            const cannonBodyY = 1.7 + getPlatformHeightAt(x, z);
+            return isObstacleCollision(x, z, 0.85) ||
+                isBarrelCollision(x, z, 0.85, cannonBodyY) ||
+                checkFenceCollision(x, z, 0.85, cannonBodyY) ||
+                isVoid(x, z);
         }
 
         function getPlatformHeightAt(x, z) {
@@ -2542,7 +2623,7 @@
 
                 const enemyRadius = e.userData.isBoss ? 2.0 : 0.7;
 
-                if (!isBlocked(nextX, nextZ, enemyRadius, !!e.userData.canFly, e.position.y)) {
+                if (!isBlocked(nextX, nextZ, enemyRadius, !!e.userData.canFly, e.position.y, !!e.userData.canFly)) {
                     for (let other of enemies) {
                         if (other !== e && other.position.distanceTo(e.position) < 1.4) {
                             nextX += (e.position.x - other.position.x) * 0.04;
@@ -2694,7 +2775,6 @@
                     if (!isObstacleCollision(nextX, camera.position.z) && !isBarrelCollision(nextX, camera.position.z, 0.65, camera.position.y) && !checkFenceCollision(nextX, camera.position.z, 0.6, camera.position.y)) camera.position.x = nextX;
                     if (!isObstacleCollision(camera.position.x, nextZ) && !isBarrelCollision(camera.position.x, nextZ, 0.65, camera.position.y) && !checkFenceCollision(camera.position.x, nextZ, 0.6, camera.position.y)) camera.position.z = nextZ;
                 } else if (cannonGroup) {
-                    camera.position.y = 1.6;
                     playerVelY = 0;
                     isGrounded = true;
 
@@ -2708,11 +2788,15 @@
                     const nextCX = cannonGroup.position.x + dx;
                     const nextCZ = cannonGroup.position.z + dz;
 
-                    if (!isBlocked(nextCX, cannonGroup.position.z, 1.1)) cannonGroup.position.x = nextCX;
-                    if (!isBlocked(cannonGroup.position.x, nextCZ, 1.1)) cannonGroup.position.z = nextCZ;
+                    if (!isCannonBlocked(nextCX, cannonGroup.position.z)) cannonGroup.position.x = nextCX;
+                    if (!isCannonBlocked(cannonGroup.position.x, nextCZ)) cannonGroup.position.z = nextCZ;
+
+                    const cannonFloorY = getPlatformHeightAt(cannonGroup.position.x, cannonGroup.position.z);
+                    cannonGroup.position.y = cannonFloorY;
 
                     camera.position.x = cannonGroup.position.x;
                     camera.position.z = cannonGroup.position.z;
+                    camera.position.y = 1.6 + cannonFloorY;
                 }
 
                 for (let i = oilSlicks.length - 1; i >= 0; i--) {
@@ -2893,19 +2977,27 @@
                 eb.position.add(eb.userData.velocity.clone().multiplyScalar(delta));
 
                 let hit = isObstacleCollision(eb.position.x, eb.position.z, 0.2);
+                let impactPoint = eb.position.clone();
                 if (!hit) {
                     for (let e of enemies) {
-                        if (distancePointToSegment(getEnemyHitCenter(e), prevExpPosition, eb.position) < (e.userData.isBoss ? 3.0 : 1.45)) { hit = true; break; }
+                        if (distancePointToSegment(getEnemyHitCenter(e), prevExpPosition, eb.position) < (e.userData.isBoss ? 3.0 : 1.45)) { hit = true; impactPoint = e.position.clone(); break; }
+                    }
+                }
+                if (!hit) {
+                    const floorImpact = getProjectileFloorImpact(prevExpPosition, eb.position);
+                    if (floorImpact) {
+                        hit = true;
+                        impactPoint = floorImpact;
                     }
                 }
 
                 if (hit) {
-                    createExplosion(eb.position, eb.userData.radius, eb.userData.damage);
+                    createExplosion(impactPoint, eb.userData.radius, eb.userData.damage, true);
                     if (eb.userData.cluster) {
                         for (let c = 0; c < 3; c++) {
                             const angle = (Math.PI * 2 / 3) * c;
-                            const clusterPos = eb.position.clone().add(new THREE.Vector3(Math.cos(angle) * 2.2, 0, Math.sin(angle) * 2.2));
-                            createExplosion(clusterPos, 2.4, eb.userData.damage * 0.45);
+                            const clusterPos = impactPoint.clone().add(new THREE.Vector3(Math.cos(angle) * 2.2, 0, Math.sin(angle) * 2.2));
+                            createExplosion(clusterPos, 2.4, eb.userData.damage * 0.45, true);
                         }
                     }
                     scene.remove(eb);
@@ -2945,7 +3037,7 @@
                 for (let k = barrels.length - 1; k >= 0; k--) {
                     const barrel = barrels[k];
                     if (distancePointToSegment(barrel.position, prevPosition, b.position) < 1.0) {
-                        createExplosion(barrel.position, 6.0, 40);
+                        createExplosion(barrel.position, 6.0, 40, true);
                         mapObjectsGroup.remove(barrel);
                         barrels.splice(k, 1);
                         scene.remove(b);
@@ -2997,11 +3089,9 @@
                         }
                         if (b.userData.splash) {
                             createExplosion(e.position, b.userData.splash, 0);
-                            damageEnemiesInRadius(e.position, b.userData.splash, b.userData.damage * 0.45, e.id);
+                            damageEnemiesInRadius(e.position, b.userData.splash, b.userData.damage * 0.45, e.id, true);
                         }
-                        if (hasUpgrade('vampire') && Math.random() < 0.12) {
-                            stats.hp = Math.min(100, stats.hp + 1.5);
-                        }
+                        applyVampireLeech('hit');
                         updateEnemyHpDisplay(e);
 
                         if (b.userData.hitEnemies) b.userData.hitEnemies.push(e.id);
@@ -3012,6 +3102,15 @@
                             bullets.splice(i, 1);
                             break;
                         }
+                    }
+                }
+
+                if (bullets[i]) {
+                    const floorImpact = getProjectileFloorImpact(prevPosition, b.position);
+                    if (floorImpact) {
+                        scene.remove(b);
+                        bullets.splice(i, 1);
+                        continue;
                     }
                 }
             }
@@ -3029,6 +3128,7 @@
                         stats.kills += 1;
                     }
 
+                    applyVampireLeech('kill', !!e.userData.isBoss);
                     scene.remove(e);
                     enemies.splice(j, 1);
                     checkWaveEnd();
@@ -3037,9 +3137,10 @@
 
             for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
                 const ep = enemyProjectiles[i];
+                const prevEnemyProjectilePosition = ep.position.clone();
                 ep.position.add(ep.userData.velocity.clone().multiplyScalar(enemyDelta));
 
-                if (isObstacleCollision(ep.position.x, ep.position.z, 0.2)) {
+                if (isObstacleCollision(ep.position.x, ep.position.z, 0.2) || getProjectileFloorImpact(prevEnemyProjectilePosition, ep.position)) {
                     scene.remove(ep);
                     enemyProjectiles.splice(i, 1);
                     continue;
