@@ -63,6 +63,37 @@
             text-align: center;
         }
 
+        #enemy-compass {
+            position: absolute;
+            top: 92px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            min-width: 240px;
+            padding: 8px 14px;
+            color: #00ffaa;
+            font-size: 1.1rem;
+            font-weight: bold;
+            z-index: 18;
+            text-shadow: 0 0 8px #00ffaa;
+            background: rgba(0, 0, 0, 0.55);
+            border: 1px solid rgba(0, 255, 170, 0.65);
+            box-shadow: 0 0 12px rgba(0, 255, 170, 0.25);
+            pointer-events: none;
+        }
+
+        #enemy-compass-arrow {
+            display: inline-block;
+            color: #ff0055;
+            font-size: 1.8rem;
+            line-height: 1;
+            text-shadow: 0 0 10px #ff0055;
+            transform-origin: 50% 50%;
+        }
+
         #biome-tag {
             font-size: 1.2rem;
             color: #00ffff;
@@ -425,6 +456,11 @@
         <div id="biome-tag">BIOM: CYBER-CITY</div>
     </div>
 
+    <div id="enemy-compass">
+        <span id="enemy-compass-arrow">▲</span>
+        <span id="enemy-compass-text">NAJBLIZSZY: 0m</span>
+    </div>
+
     <div id="cannon-alert">⚠️ WYKRYTO MOBILNE DZIAŁKO NA MAPIE! ⚠️</div>
 
     <div id="boss-hud">
@@ -460,6 +496,8 @@
             <div class="settings-box">
                 <label for="mainSensSlider">CZULOSC MYSZY: <span id="mainSensValue">1.0</span></label>
                 <input type="range" id="mainSensSlider" min="0.2" max="3.0" step="0.1" value="1.0">
+                <label for="mainFovSlider">FOV: <span id="mainFovValue">75</span></label>
+                <input type="range" id="mainFovSlider" min="60" max="110" step="1" value="75">
             </div>
             <button class="menu-btn" id="backFromSettingsBtn">BACK</button>
         </div>
@@ -476,6 +514,8 @@
         <div class="settings-box">
             <label for="sensSlider">CZUŁOŚĆ MYSZY: <span id="sensValue">1.0</span></label>
             <input type="range" id="sensSlider" min="0.2" max="3.0" step="0.1" value="1.0">
+            <label for="fovSlider">FOV: <span id="fovValue">75</span></label>
+            <input type="range" id="fovSlider" min="60" max="110" step="1" value="75">
         </div>
     </div>
 
@@ -695,6 +735,7 @@
         let stats = { hp: 100, score: 0, scoreEarned: 0, kills: 0, shotsFired: 0, hits: 0, dead: false, currencyEarned: 0 };
         let isPaused = false, inShop = false, gameStarted = false;
         let mouseSensitivity = 1.0;
+        let playerFov = 75;
 
         let canDash = true;
         const DASH_COOLDOWN = 2000;
@@ -789,10 +830,11 @@
                     currency: parsed.currency || 0,
                     unlockedCharacters: parsed.unlockedCharacters || ['rookie'],
                     selectedCharacter: parsed.selectedCharacter || 'rookie',
-                    sensitivity: parsed.sensitivity || 1.0
+                    sensitivity: parsed.sensitivity || 1.0,
+                    fov: parsed.fov || 75
                 };
             } catch (err) {
-                return { currency: 0, unlockedCharacters: ['rookie'], selectedCharacter: 'rookie', sensitivity: 1.0 };
+                return { currency: 0, unlockedCharacters: ['rookie'], selectedCharacter: 'rookie', sensitivity: 1.0, fov: 75 };
             }
         }
 
@@ -994,6 +1036,26 @@
             if (mainSensValue) mainSensValue.innerText = mouseSensitivity.toFixed(1);
         }
 
+        function syncFovControls(value) {
+            playerFov = Math.max(60, Math.min(110, parseInt(value, 10) || 75));
+            if (metaState) {
+                metaState.fov = playerFov;
+                saveMetaState();
+            }
+            if (camera) {
+                camera.fov = playerFov;
+                camera.updateProjectionMatrix();
+            }
+            const fov = document.getElementById('fovSlider');
+            const fovValue = document.getElementById('fovValue');
+            const mainFov = document.getElementById('mainFovSlider');
+            const mainFovValue = document.getElementById('mainFovValue');
+            if (fov) fov.value = playerFov;
+            if (mainFov) mainFov.value = playerFov;
+            if (fovValue) fovValue.innerText = playerFov;
+            if (mainFovValue) mainFovValue.innerText = playerFov;
+        }
+
         function setupMainMenuButtons() {
             document.getElementById('playBtn').onclick = () => {
                 resetRunForCharacter();
@@ -1008,6 +1070,7 @@
             document.getElementById('backFromUnlockBtn').onclick = () => showOverlayPanel('main-menu');
             document.getElementById('backFromSettingsBtn').onclick = () => showOverlayPanel('main-menu');
             document.getElementById('mainSensSlider').oninput = (e) => syncSensitivityControls(e.target.value);
+            document.getElementById('mainFovSlider').oninput = (e) => syncFovControls(e.target.value);
         }
 
         function switchWeaponSlot(slot) {
@@ -1341,6 +1404,7 @@
             sides.forEach(s => {
                 const f = new THREE.Mesh(new THREE.BoxGeometry(s.w, s.h, s.d), fenceMat);
                 f.position.set(s.x, fenceHeight / 2, s.z);
+                f.userData = { jumpableFence: true };
                 mapObjectsGroup.add(f);
                 obstacles.push(f);
             });
@@ -1391,6 +1455,7 @@
             document.getElementById('hud').innerHTML = 'HP: <span id="hp">100</span><br><div id="ammo-list"></div>';
             setupMainMenuButtons();
             syncSensitivityControls(metaState.sensitivity);
+            syncFovControls(metaState.fov);
             resetRunForCharacter();
             renderCharacterUnlocks();
             showOverlayPanel('main-menu');
@@ -1400,8 +1465,9 @@
             scene.background = new THREE.Color(0x080808);
             scene.fog = new THREE.Fog(0x080808, 5, 55);
 
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera = new THREE.PerspectiveCamera(playerFov, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(0, 1.7, 0);
+            syncFovControls(playerFov);
 
             raycaster = new THREE.Raycaster();
 
@@ -1495,6 +1561,7 @@
             document.getElementById('resumeBtn').onclick = resumeGame;
             document.getElementById('homeBtn').onclick = () => location.reload();
             document.getElementById('sensSlider').oninput = (e) => syncSensitivityControls(e.target.value);
+            document.getElementById('fovSlider').oninput = (e) => syncFovControls(e.target.value);
 
             setupShopButtons();
         }
@@ -1520,7 +1587,7 @@
             document.body.requestPointerLock();
         }
 
-        function updateShopUI() {
+        function legacyFixedShopUI_DISABLED() {
             document.getElementById('shop-score').innerText = stats.score;
             document.getElementById('score').innerText = stats.score;
 
@@ -2206,6 +2273,42 @@
             });
         }
 
+        function getAimTargetPoint(maxDistance = 100) {
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const targets = [...walls, ...platforms, ...barrels, ...enemies];
+            const intersects = raycaster.intersectObjects(targets, true);
+            return intersects.length > 0 ? intersects[0].point : raycaster.ray.at(maxDistance, new THREE.Vector3());
+        }
+
+        function getEnemyHitCenter(e) {
+            const p = e.position.clone();
+            p.y = e.userData.isBoss ? Math.max(p.y, 2.0) : Math.max(p.y, 1.2);
+            return p;
+        }
+
+        function distancePointToSegment(point, a, b) {
+            const ab = new THREE.Vector3().subVectors(b, a);
+            const lenSq = ab.lengthSq();
+            if (lenSq === 0) return point.distanceTo(a);
+            const t = Math.max(0, Math.min(1, new THREE.Vector3().subVectors(point, a).dot(ab) / lenSq));
+            const closest = a.clone().add(ab.multiplyScalar(t));
+            return point.distanceTo(closest);
+        }
+
+        function segmentHitsGroundDisc(a, b, center, radius) {
+            const groundY = 0.08;
+            const dy = b.y - a.y;
+            if (Math.abs(dy) < 0.0001) {
+                if (Math.abs(a.y - groundY) > 0.25) return false;
+                return Math.hypot(a.x - center.x, a.z - center.z) <= radius || Math.hypot(b.x - center.x, b.z - center.z) <= radius;
+            }
+            const t = (groundY - a.y) / dy;
+            if (t < 0 || t > 1) return false;
+            const x = a.x + (b.x - a.x) * t;
+            const z = a.z + (b.z - a.z) * t;
+            return Math.hypot(x - center.x, z - center.z) <= radius;
+        }
+
         function handleShooting() {
             if (!isMouseDown || stats.dead || !document.pointerLockElement || isPaused || inShop) return;
 
@@ -2217,9 +2320,7 @@
                 cannonShotsLeft--;
                 document.getElementById('weapon-name').innerText = `DZIAŁKO (${cannonShotsLeft}/20 HP)`;
 
-                raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-                const intersects = raycaster.intersectObjects([...walls, ...platforms, ...enemies, ...barrels]);
-                let targetPoint = intersects.length > 0 ? intersects[0].point : raycaster.ray.at(100, new THREE.Vector3());
+                const targetPoint = getAimTargetPoint(100);
 
                 const spawnPos = camera.position.clone().add(new THREE.Vector3(0, 0.2, -1.0).applyQuaternion(camera.quaternion));
                 const trajectoryDir = new THREE.Vector3().subVectors(targetPoint, spawnPos).normalize();
@@ -2261,9 +2362,7 @@
             lastShotTime = now;
             stats.shotsFired++;
 
-            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            const intersects = raycaster.intersectObjects([...walls, ...platforms, ...enemies, ...barrels]);
-            let targetPoint = intersects.length > 0 ? intersects[0].point : raycaster.ray.at(100, new THREE.Vector3());
+            const targetPoint = getAimTargetPoint(100);
 
             const muzzleOffset = new THREE.Vector3(0.25, -0.22, -0.5).applyQuaternion(camera.quaternion);
             const spawnPos = camera.position.clone().add(muzzleOffset);
@@ -2326,8 +2425,9 @@
                 isObstacleCollision(x, z - probe, 0.15);
         }
 
-        function checkFenceCollision(x, z, radius = 0.6) {
+        function checkFenceCollision(x, z, radius = 0.6, bodyY = 1.7) {
             for (let f of obstacles) {
+                if (f.userData && f.userData.jumpableFence && bodyY > 2.05) continue;
                 const bbox = new THREE.Box3().setFromObject(f);
                 if (x > bbox.min.x - radius && x < bbox.max.x + radius &&
                     z > bbox.min.z - radius && z < bbox.max.z + radius) return true;
@@ -2396,6 +2496,48 @@
                     break;
                 }
             }
+        }
+
+        function normalizeAngle(angle) {
+            return Math.atan2(Math.sin(angle), Math.cos(angle));
+        }
+
+        function updateEnemyCompass() {
+            const compass = document.getElementById('enemy-compass');
+            if (!compass || !camera || !waveInProgress || enemies.length === 0) {
+                if (compass) compass.style.display = 'none';
+                return;
+            }
+
+            const isBossWave = (currentWave % 5 === 0);
+            const totalRemaining = isBossWave ? enemies.length : Math.max(0, (enemiesToSpawnInWave - enemiesSpawnedInWave) + enemies.length);
+            if (totalRemaining > 2) {
+                compass.style.display = 'none';
+                return;
+            }
+
+            let nearest = null;
+            let nearestDist = Infinity;
+            enemies.forEach(enemy => {
+                const dist = Math.hypot(enemy.position.x - camera.position.x, enemy.position.z - camera.position.z);
+                if (dist < nearestDist) {
+                    nearest = enemy;
+                    nearestDist = dist;
+                }
+            });
+
+            if (!nearest) {
+                compass.style.display = 'none';
+                return;
+            }
+
+            const targetAngle = Math.atan2(nearest.position.x - camera.position.x, nearest.position.z - camera.position.z);
+            const cameraForwardAngle = camera.rotation.y + Math.PI;
+            const relativeAngle = normalizeAngle(targetAngle - cameraForwardAngle);
+
+            document.getElementById('enemy-compass-arrow').style.transform = `rotate(${relativeAngle}rad)`;
+            document.getElementById('enemy-compass-text').innerText = `NAJBLIZSZY: ${Math.max(1, Math.round(nearestDist))}m`;
+            compass.style.display = 'flex';
         }
 
         function triggerDeath(reason) {
@@ -2489,10 +2631,8 @@
                     const nextX = camera.position.x + dx;
                     const nextZ = camera.position.z + dz;
 
-                    const hitFence = checkFenceCollision(nextX, nextZ);
-
-                    if (!isObstacleCollision(nextX, camera.position.z) && !checkFenceCollision(nextX, camera.position.z)) camera.position.x = nextX;
-                    if (!isObstacleCollision(camera.position.x, nextZ) && !checkFenceCollision(camera.position.x, nextZ)) camera.position.z = nextZ;
+                    if (!isObstacleCollision(nextX, camera.position.z) && !checkFenceCollision(nextX, camera.position.z, 0.6, camera.position.y)) camera.position.x = nextX;
+                    if (!isObstacleCollision(camera.position.x, nextZ) && !checkFenceCollision(camera.position.x, nextZ, 0.6, camera.position.y)) camera.position.z = nextZ;
                 } else if (cannonGroup) {
                     camera.position.y = 1.6;
                     playerVelY = 0;
@@ -2686,12 +2826,13 @@
 
             for (let i = explosiveBullets.length - 1; i >= 0; i--) {
                 const eb = explosiveBullets[i];
+                const prevExpPosition = eb.position.clone();
                 eb.position.add(eb.userData.velocity.clone().multiplyScalar(delta));
 
                 let hit = isObstacleCollision(eb.position.x, eb.position.z, 0.2);
                 if (!hit) {
                     for (let e of enemies) {
-                        if (eb.position.distanceTo(e.position) < (e.userData.isBoss ? 3.0 : 1.3)) { hit = true; break; }
+                        if (distancePointToSegment(getEnemyHitCenter(e), prevExpPosition, eb.position) < (e.userData.isBoss ? 3.0 : 1.45)) { hit = true; break; }
                     }
                 }
 
@@ -2723,6 +2864,7 @@
 
             for (let i = bullets.length - 1; i >= 0; i--) {
                 const b = bullets[i];
+                const prevPosition = b.position.clone();
                 b.position.add(b.userData.velocity.clone().multiplyScalar(delta));
                 b.userData.life -= delta;
                 if (b.userData.life <= 0) {
@@ -2739,7 +2881,7 @@
 
                 for (let k = barrels.length - 1; k >= 0; k--) {
                     const barrel = barrels[k];
-                    if (b.position.distanceTo(barrel.position) < 1.0) {
+                    if (distancePointToSegment(barrel.position, prevPosition, b.position) < 1.0) {
                         createExplosion(barrel.position, 6.0, 40);
                         mapObjectsGroup.remove(barrel);
                         barrels.splice(k, 1);
@@ -2751,7 +2893,7 @@
                 if (!bullets[i]) continue;
 
                 for (let oil of oilSlicks) {
-                    if (Math.hypot(b.position.x - oil.position.x, b.position.z - oil.position.z) < 2.0) {
+                    if (segmentHitsGroundDisc(prevPosition, b.position, oil.position, 2.0)) {
                         oil.userData.isOnFire = true;
                         oil.userData.fireTimer = 5.0;
                         oil.material.color.setHex(0xff3300);
@@ -2762,7 +2904,7 @@
                     const e = enemies[j];
                     if (b.userData.hitEnemies && b.userData.hitEnemies.includes(e.id)) continue;
 
-                    if (b.position.distanceTo(e.position) < (e.userData.isBoss ? 2.8 : 1.3)) {
+                    if (distancePointToSegment(getEnemyHitCenter(e), prevPosition, b.position) < (e.userData.isBoss ? 3.0 : 1.45)) {
                         if (e.userData.hasShield) {
                             const enemyForward = new THREE.Vector3(0, 0, 1).applyQuaternion(e.quaternion);
                             const bulletDir = b.userData.velocity.clone().normalize();
