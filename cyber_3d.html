@@ -262,9 +262,17 @@
         }
 
         @keyframes pulse-low-hp {
-            0% { opacity: 0.3; }
-            50% { opacity: 0.95; }
-            100% { opacity: 0.3; }
+            0% {
+                opacity: 0.3;
+            }
+
+            50% {
+                opacity: 0.95;
+            }
+
+            100% {
+                opacity: 0.3;
+            }
         }
 
         .low-hp-active {
@@ -408,7 +416,10 @@
         .character-card::before {
             content: '';
             position: absolute;
-            top: 0; left: 0; width: 6px; height: 100%;
+            top: 0;
+            left: 0;
+            width: 6px;
+            height: 100%;
             background: #ff0055;
             box-shadow: 0 0 10px #ff0055;
         }
@@ -503,7 +514,8 @@
         <h1 style="color:#ff0055; font-size: 3.2rem; text-shadow:0 0 20px #ff0055;">CYBER DOOM</h1>
         <div id="main-menu" class="menu-panel">
             <div id="selected-character-readout" class="small-readout"></div>
-            <p style="color:#00ffaa; font-size: 1.05rem; background:rgba(0,0,0,0.5); padding:10px; border-radius:4px; border:1px solid #00ffaa;">
+            <p
+                style="color:#00ffaa; font-size: 1.05rem; background:rgba(0,0,0,0.5); padding:10px; border-radius:4px; border:1px solid #00ffaa;">
                 WASD - Ruch | SPACJA - Skok | CTRL/C - Slide | SHIFT - Dash<br>
                 1/2 - Bronie | LPM - Strzał | Q - Umiejętność Postaci | F/V - Miecz Cyber-Blade<br>
                 E - Działko Stacjonarne | ESC - Pauza
@@ -554,7 +566,8 @@
         <h2 style="color:#ffaa00; margin:12px 0 4px;">SPRZEDAŻ BRONI</h2>
         <div class="shop-grid" id="sell-offers"></div>
 
-        <button class="menu-btn" id="closeShopBtn" style="margin-top:20px; background:#00ffaa; color:#000;">NASTĘPNA FALA</button>
+        <button class="menu-btn" id="closeShopBtn" style="margin-top:20px; background:#00ffaa; color:#000;">NASTĘPNA
+            FALA</button>
     </div>
 
     <div id="death" style="display:none;">
@@ -929,16 +942,67 @@
             bossTitan: '', bossBehemoth: '', bossPlasma: ''
         };
 
+        // =====================================================================
+        // WŁASNE MODELE 3D BRONI — KONFIGURACJA
+        // Wstaw ścieżkę do pliku .glb/.gltf przy danej broni.
+        // Jeśli plik nie istnieje lub ścieżka jest pusta, użyty zostanie
+        // automatyczny model proceduralny jako zastępstwo.
+        //
+        // Przykład: pistol: 'models/weapons/pistol.glb'
+        // Pliki umieść w folderze obok cyber_3d.html, np.:
+        //   lol/models/weapons/pistol.glb
+        // =====================================================================
+        const WEAPON_MODEL_PATHS = {
+            pistol: 'gun.glb',   // models/weapons/pistol.glb
+            rifle: '',   // models/weapons/rifle.glb
+            shotgun: '',   // models/weapons/shotgun.glb
+            smg: '',   // models/weapons/smg.glb
+            burst: '',   // models/weapons/burst.glb
+            sniper: '',   // models/weapons/sniper.glb
+            crossbow: '',   // models/weapons/crossbow.glb
+            wand: '',   // models/weapons/wand.glb
+            ice_staff: '',   // models/weapons/ice_staff.glb
+            plasma: '',   // models/weapons/plasma.glb
+            railgun: '',   // models/weapons/railgun.glb
+            grenade: '',   // models/weapons/grenade.glb
+            flame: '',   // models/weapons/flame.glb
+            laser: '',   // models/weapons/laser.glb
+            boomerang: ''    // models/weapons/boomerang.glb
+        };
+
         const loadedModels = {};
+        const loadedWeaponModels = {}; // Cache loaded custom weapon models
         const gltfLoader = new THREE.GLTFLoader();
 
         function loadGameModels() {
+            // Load enemy/cannon models
             Object.keys(MODEL_PATHS).forEach(key => {
                 const path = MODEL_PATHS[key];
                 if (path && path.trim() !== '') {
                     gltfLoader.load(path, (gltf) => {
                         loadedModels[key] = gltf.scene;
                     });
+                }
+            });
+
+            // Load custom weapon models — fallback to procedural on error or empty path
+            Object.keys(WEAPON_MODEL_PATHS).forEach(weaponId => {
+                const path = WEAPON_MODEL_PATHS[weaponId];
+                if (path && path.trim() !== '') {
+                    gltfLoader.load(
+                        path,
+                        (gltf) => {
+                            // Scale model to fit viewmodel rig (adjust if needed)
+                            const model = gltf.scene;
+                            model.scale.set(0.18, 0.18, 0.18);
+                            loadedWeaponModels[weaponId] = model;
+                            console.log(`[WEAPON MODEL] Załadowano: ${weaponId} <- ${path}`);
+                        },
+                        undefined,
+                        (err) => {
+                            console.warn(`[WEAPON MODEL] Błąd ładowania ${weaponId} (${path}), używam modelu zastępczego.`);
+                        }
+                    );
                 }
             });
         }
@@ -948,7 +1012,6 @@
             const group = new THREE.Group();
             let colorHex = 0xff0055;
 
-            // Helper to make materials super bright and emissive
             const makeBrightMat = (color, emissiveInt = 0.65, metal = 0.5, rough = 0.2) => {
                 return new THREE.MeshStandardMaterial({
                     color: color,
@@ -1010,7 +1073,7 @@
                 colorHex = 0x0066ff;
                 const mat = makeBrightMat(colorHex, 0.6, 0.7, 0.3);
                 const armorMat = makeBrightMat(0x002288, 0.5, 0.9, 0.2);
-                const shieldMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, transparent: true, opacity: 0.75, emissive: 0x00ffff, emissiveIntensity: 0.6 });
+                const shieldMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, transparent: true, opacity: 0.85, emissive: 0x00ffff, emissiveIntensity: 0.8 });
 
                 const torso = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.8, 1.0), mat);
                 torso.position.y = 1.2;
@@ -1026,7 +1089,7 @@
                 sh2.position.set(0.9, 1.9, 0);
                 group.add(sh1); group.add(sh2);
 
-                const shieldMesh = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.5, 0.15), shieldMat);
+                const shieldMesh = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.5, 0.2), shieldMat);
                 shieldMesh.position.set(0, 1.3, -0.85);
                 shieldMesh.name = "shield";
                 group.add(shieldMesh);
@@ -1205,7 +1268,7 @@
                     group.add(orb);
                 }
 
-            } else { // normal android
+            } else {
                 colorHex = 0xff0055;
                 const mat = makeBrightMat(colorHex, 0.7, 0.6, 0.3);
                 const darkMat = makeBrightMat(0x222233, 0.4, 0.8, 0.2);
@@ -1278,7 +1341,7 @@
                 nozzle.rotation.x = Math.PI / 2; nozzle.position.set(0, 0.02, -0.6);
                 group.add(body); group.add(tank1); group.add(tank2); group.add(nozzle);
 
-            } else { // pistol / default
+            } else {
                 const body = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 0.55), new THREE.MeshStandardMaterial({ color: 0x141418, metalness: 0.8 }));
                 const slide = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.12, 0.52), new THREE.MeshStandardMaterial({ color: 0x00ff66, emissive: 0x00aa44, emissiveIntensity: 0.4 }));
                 slide.position.set(0, 0.09, -0.02);
@@ -1719,7 +1782,16 @@
 
             if (weaponRig) {
                 if (currentWeaponMesh) weaponRig.remove(currentWeaponMesh);
-                currentWeaponMesh = create3DWeaponMesh(weapons[currentWeapon].type);
+
+                const weaponId = weapons[currentWeapon].id;
+                if (loadedWeaponModels[weaponId]) {
+                    // Use custom loaded 3D model
+                    currentWeaponMesh = loadedWeaponModels[weaponId].clone();
+                } else {
+                    // Fallback: use procedural mesh
+                    currentWeaponMesh = create3DWeaponMesh(weapons[currentWeapon].type);
+                }
+
                 weaponRig.add(currentWeaponMesh);
             }
 
@@ -2660,7 +2732,8 @@
             ctx.fillRect(2, 2, 124, 12);
 
             const texture = new THREE.CanvasTexture(canvas);
-            const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true });
+            // depthTest: true and depthWrite: false ensures walls properly occlude 2D HP bars!
+            const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: true, depthWrite: false, transparent: true });
             const sprite = new THREE.Sprite(spriteMat);
             sprite.scale.set(1.8, 0.25, 1);
             sprite.renderOrder = 999;
@@ -2844,7 +2917,7 @@
             } else if (roll > 0.72) {
                 type = 'stalker'; baseHp = 3; speed = 4.3; scale = 2.2;
             } else if (roll > 0.62) {
-                type = 'shield'; baseHp = 5; speed = 2.5; scale = 2.5;
+                type = 'shield'; baseHp = 5; speed = 2.2; scale = 2.5;
             } else if (roll > 0.52) {
                 type = 'buffer'; baseHp = 4; speed = 2.5; scale = 2.4;
             } else if (roll > 0.40) {
@@ -2860,7 +2933,6 @@
             let group = createProceduralEnemyMesh(type);
 
             let hp = Math.floor(baseHp * (1 + (currentWave - 1) * 0.4));
-            let shieldHp = type === 'shield' ? Math.floor(6 * (1 + (currentWave - 1) * 0.3)) : 0;
             const naturalFlyer = type === 'stalker' || type === 'spitter' || type === 'necromancer';
             const flyingChance = Math.min(0.34, 0.16 + currentWave * 0.01);
             const canFly = naturalFlyer || Math.random() < flyingChance;
@@ -2882,9 +2954,9 @@
                 type: type,
                 maxHp: hp,
                 hp: hp,
-                shieldHp: shieldHp,
+                shieldHits: type === 'shield' ? 10 : 0, // Shield breaks after 10 hits!
                 hasShield: type === 'shield',
-                turnSpeed: type === 'shield' ? 1.5 : 999.0,
+                turnSpeed: type === 'shield' ? 1.6 : 999.0, // Slow turning rate for Shield Mech so player can run behind!
                 speed: speed,
                 damageMult: 1 + (currentWave - 1) * 0.25,
                 hpBar: hpBar,
@@ -3365,35 +3437,95 @@
             setTimeout(() => document.getElementById('damage-flash').style.opacity = "0", 50);
         }
 
+        // --- ENEMY PATHFINDING & SMOOTH WALL-SLIDING AI ---
         function moveEnemySmart(e, targetPos, delta, forceAggro = false) {
             const slowMult = e.userData.slowTimer > 0 ? 0.45 : 1.0;
             const speed = (e.userData.speed * (forceAggro ? 1.3 : 1.0) * slowMult) * delta;
+            const enemyRadius = e.userData.isBoss ? 2.0 : 0.75;
 
-            let baseAngle = Math.atan2(targetPos.x - e.position.x, targetPos.z - e.position.z);
-            if (e.userData.type === 'dodger') baseAngle += e.userData.strafeDir * 0.55;
-            if (e.userData.type === 'stalker') baseAngle += e.userData.strafeDir * 0.35;
-            const angleAngles = [0, 0.45, -0.45, 0.9, -0.9, 1.57, -1.57, Math.PI];
+            // Unstuck mechanism: if enemy is stuck inside a wall, push out along cardinal directions
+            if (isObstacleCollision(e.position.x, e.position.z, enemyRadius * 0.75)) {
+                const pushAngles = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
+                for (let a of pushAngles) {
+                    const px = e.position.x + Math.sin(a) * 0.45;
+                    const pz = e.position.z + Math.cos(a) * 0.45;
+                    if (!isObstacleCollision(px, pz, enemyRadius * 0.75)) {
+                        e.position.x = px;
+                        e.position.z = pz;
+                        break;
+                    }
+                }
+            }
 
-            for (let angleOffset of angleAngles) {
-                let testAngle = baseAngle + angleOffset;
-                let dx = Math.sin(testAngle) * speed;
-                let dz = Math.cos(testAngle) * speed;
+            let desiredDir = new THREE.Vector3(targetPos.x - e.position.x, 0, targetPos.z - e.position.z);
+            if (desiredDir.lengthSq() < 0.001) return;
+            desiredDir.normalize();
 
-                let nextX = e.position.x + dx;
-                let nextZ = e.position.z + dz;
+            if (e.userData.type === 'dodger' || e.userData.type === 'stalker') {
+                const sideDir = new THREE.Vector3(-desiredDir.z * e.userData.strafeDir, 0, desiredDir.x * e.userData.strafeDir);
+                desiredDir.addScaledVector(sideDir, 0.45).normalize();
+            }
 
-                const enemyRadius = e.userData.isBoss ? 2.0 : 0.7;
+            let tryX = e.position.x + desiredDir.x * speed;
+            let tryZ = e.position.z + desiredDir.z * speed;
 
-                if (!isBlocked(nextX, nextZ, enemyRadius, !!e.userData.canFly, e.position.y, !!e.userData.canFly)) {
-                    for (let other of enemies) {
-                        if (other !== e && other.position.distanceTo(e.position) < 1.4) {
-                            nextX += (e.position.x - other.position.x) * 0.04;
-                            nextZ += (e.position.z - other.position.z) * 0.04;
+            // Test full step towards target
+            if (!isBlocked(tryX, tryZ, enemyRadius, !!e.userData.canFly, e.position.y, !!e.userData.canFly)) {
+                e.position.x = tryX;
+                e.position.z = tryZ;
+            } else {
+                // Wall sliding: test X-axis and Z-axis independently to slide along wall surface
+                let canX = !isBlocked(tryX, e.position.z, enemyRadius, !!e.userData.canFly, e.position.y, !!e.userData.canFly);
+                let canZ = !isBlocked(e.position.x, tryZ, enemyRadius, !!e.userData.canFly, e.position.y, !!e.userData.canFly);
+
+                if (canX && !canZ) {
+                    e.position.x = tryX;
+                } else if (canZ && !canX) {
+                    e.position.z = tryZ;
+                } else {
+                    // Try 12 alternative angles around circle to navigate corners cleanly
+                    let bestAngle = null;
+                    let bestDot = -Infinity;
+                    const baseAngle = Math.atan2(desiredDir.x, desiredDir.z);
+
+                    for (let i = 1; i < 12; i++) {
+                        const angleOffset = (i % 2 === 1 ? 1 : -1) * Math.ceil(i / 2) * (Math.PI / 6);
+                        const testAngle = baseAngle + angleOffset;
+                        const testX = e.position.x + Math.sin(testAngle) * speed;
+                        const testZ = e.position.z + Math.cos(testAngle) * speed;
+
+                        if (!isBlocked(testX, testZ, enemyRadius, !!e.userData.canFly, e.position.y, !!e.userData.canFly)) {
+                            const dot = Math.sin(testAngle) * desiredDir.x + Math.cos(testAngle) * desiredDir.z;
+                            if (dot > bestDot) {
+                                bestDot = dot;
+                                bestAngle = testAngle;
+                            }
                         }
                     }
-                    e.position.x = nextX;
-                    e.position.z = nextZ;
-                    break;
+
+                    if (bestAngle !== null) {
+                        e.position.x += Math.sin(bestAngle) * speed;
+                        e.position.z += Math.cos(bestAngle) * speed;
+                    }
+                }
+            }
+
+            // Enemy-to-Enemy separation force
+            for (let other of enemies) {
+                if (other !== e) {
+                    const minDist = (e.userData.isBoss || other.userData.isBoss) ? 2.5 : 1.25;
+                    const dSq = (e.position.x - other.position.x) ** 2 + (e.position.z - other.position.z) ** 2;
+                    if (dSq < minDist * minDist && dSq > 0.001) {
+                        const d = Math.sqrt(dSq);
+                        const push = (minDist - d) * 0.06;
+                        const pushX = ((e.position.x - other.position.x) / d) * push;
+                        const pushZ = ((e.position.z - other.position.z) / d) * push;
+
+                        if (!isBlocked(e.position.x + pushX, e.position.z + pushZ, enemyRadius, !!e.userData.canFly, e.position.y, !!e.userData.canFly)) {
+                            e.position.x += pushX;
+                            e.position.z += pushZ;
+                        }
+                    }
                 }
             }
         }
@@ -3532,7 +3664,7 @@
                     if (move.f) { dx -= Math.sin(camera.rotation.y) * speed; dz -= Math.cos(camera.rotation.y) * speed; }
                     if (move.b) { dx += Math.sin(camera.rotation.y) * speed; dz += Math.cos(camera.rotation.y) * speed; }
                     if (move.l) { dx -= Math.cos(camera.rotation.y) * speed; dz += Math.sin(camera.rotation.y) * speed; }
-                    if (move.r) { dx += Math.cos(camera.rotation.y) * speed; dz -= Math.sin(camera.rotation.y) * speed; }
+                    if (move.r) { dx += Math.cos(camera.rotation.y) * speed; dz += Math.sin(camera.rotation.y) * speed; }
                     if (isSliding && dx === 0 && dz === 0) {
                         dx -= Math.sin(camera.rotation.y) * speed;
                         dz -= Math.cos(camera.rotation.y) * speed;
@@ -3626,7 +3758,6 @@
                     if (e.userData.canFly && !e.userData.isBoss) {
                         e.position.y = e.userData.flyBaseY + Math.sin(now * 0.004 + e.userData.flyBob) * 0.28;
                     }
-                    e.rotation.y += delta * 0.5;
 
                     if (e.userData.burnTimer > 0) {
                         e.userData.burnTimer -= delta;
@@ -3643,7 +3774,13 @@
                         }
                     }
 
-                    if (e.userData.turnSpeed >= 99) {
+                    // Turn rotation with speed limit (e.g. Shield Mech turns slowly)
+                    if (e.userData.turnSpeed && e.userData.turnSpeed < 90) {
+                        const targetAngle = Math.atan2(camera.position.x - e.position.x, camera.position.z - e.position.z);
+                        let diff = normalizeAngle(targetAngle - e.rotation.y);
+                        const maxTurn = e.userData.turnSpeed * enemyDelta;
+                        e.rotation.y += Math.max(-maxTurn, Math.min(maxTurn, diff));
+                    } else {
                         e.lookAt(camera.position.x, e.position.y, camera.position.z);
                     }
 
@@ -3852,14 +3989,17 @@
                     if (b.userData.hitEnemies && b.userData.hitEnemies.includes(e.id)) continue;
 
                     if (distancePointToSegment(getEnemyHitCenter(e), prevPosition, b.position) < (e.userData.isBoss ? 3.0 : 1.45)) {
+                        // Shield Mech Logic Fix: Check if shot hits front shield or open body
                         if (e.userData.hasShield) {
-                            const enemyForward = new THREE.Vector3(0, 0, 1).applyQuaternion(e.quaternion);
-                            const bulletDir = b.userData.velocity.clone().normalize();
+                            const shieldFacing = new THREE.Vector3(0, 0, -1).applyQuaternion(e.quaternion);
+                            const toBulletSource = camera.position.clone().sub(e.position).normalize();
+                            const dot = shieldFacing.dot(toBulletSource);
 
-                            if (enemyForward.dot(bulletDir) < 0.2) {
-                                e.userData.shieldHp -= b.userData.damage;
+                            if (dot > 0.25) { // Shot hits the front shield!
+                                e.userData.shieldHits = (e.userData.shieldHits || 10) - 1;
+                                cyberAudio.playHitmarker();
 
-                                if (e.userData.shieldHp <= 0) {
+                                if (e.userData.shieldHits <= 0) {
                                     e.userData.hasShield = false;
                                     e.userData.turnSpeed = 999.0;
                                     const shieldMesh = e.getObjectByName("shield");
@@ -3868,10 +4008,11 @@
 
                                 scene.remove(b);
                                 bullets.splice(i, 1);
-                                break;
+                                break; // Shield absorbed the hit, body takes NO damage!
                             }
                         }
 
+                        // Shot hits enemy body (from back, side, or shield already broken)!
                         e.userData.hp -= b.userData.damage;
                         stats.hits++;
                         cyberAudio.playHitmarker();
