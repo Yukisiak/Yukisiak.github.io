@@ -769,7 +769,7 @@
             { id: 'ice_staff', name: 'LODOWNIK', color: '#99ddff', delay: 480, damage: 2.2, speed: 105, type: 'single', ammo: 78, maxAmmo: 210, ammoGain: 26, price: 4300, sell: 2150, desc: 'Spowalnia tempo walki, gdy ma upgrade.' },
             { id: 'plasma', name: 'PLAZMA', color: '#00ffaa', delay: 420, damage: 2.6, speed: 100, type: 'single', ammo: 74, maxAmmo: 200, ammoGain: 24, splash: 1.6, price: 4700, sell: 2350, desc: 'Energetyczne kule z malym obszarem trafienia.' },
             { id: 'railgun', name: 'RAILGUN', color: '#33ffcc', delay: 1150, damage: 9.0, speed: 230, type: 'single', ammo: 22, maxAmmo: 60, ammoGain: 7, pierce: 5, price: 6200, sell: 3100, desc: 'Linia smierci przez cala horde.' },
-            { id: 'grenade', name: 'GRANATNIK', color: '#ff4433', delay: 900, damage: 4.2, speed: 62, type: 'explosive', ammo: 26, maxAmmo: 70, ammoGain: 8, radius: 5.2, price: 5400, sell: 2700, desc: 'Pociski wybuchowe do kontroli tlumu.' },
+            { id: 'grenade', name: 'GRANATNIK', color: '#ff4433', delay: 900, damage: 4.2, speed: 62, type: 'explosive', ammo: 12, maxAmmo: 36, ammoGain: 4, radius: 5.2, price: 5400, sell: 2700, desc: 'Pociski wybuchowe do kontroli tlumu.' },
             { id: 'flame', name: 'MIOTACZ OGNIA', color: '#ff2200', delay: 55, damage: 0.55, speed: 55, type: 'flame', ammo: 220, maxAmmo: 520, ammoGain: 80, price: 5000, sell: 2500, desc: 'Krotki zasieg, ciagly nacisk i ogien.' },
             { id: 'laser', name: 'LASER', color: '#ff00aa', delay: 85, damage: 0.9, speed: 180, type: 'auto', ammo: 155, maxAmmo: 360, ammoGain: 55, mag: 50, reload: 1000, price: 4900, sell: 2450, desc: 'Precyzyjny promien z wysokim tempem.' },
             { id: 'boomerang', name: 'BOOMERANG', color: '#ffaaee', delay: 700, damage: 3.1, speed: 80, type: 'single', ammo: 44, maxAmmo: 120, ammoGain: 15, pierce: 3, price: 4000, sell: 2000, desc: 'Wolny, duzy pocisk przebijajacy kilka celow.' }
@@ -1442,9 +1442,25 @@
             const mesh = new THREE.Mesh(geo, mat);
             mesh.rotation.x = -Math.PI / 2;
             mesh.position.set(x, 0.02, z);
-            mesh.userData = { isOil: true, isOnFire: false, fireTimer: 0 };
+            mesh.userData = { isOil: true, isOnFire: false, isSpent: false, fireTimer: 0 };
             mapObjectsGroup.add(mesh);
             oilSlicks.push(mesh);
+        }
+
+        function igniteOilSlick(oil) {
+            if (!oil || oil.userData.isSpent) return;
+            oil.userData.isOnFire = true;
+            oil.userData.fireTimer = 5.0;
+            oil.material.color.setHex(0xff3300);
+        }
+
+        function removeOilSlickAt(index) {
+            const oil = oilSlicks[index];
+            if (!oil) return;
+            oil.userData.isSpent = true;
+            mapObjectsGroup.remove(oil);
+            scene.remove(oil);
+            oilSlicks.splice(index, 1);
         }
 
         function init() {
@@ -1576,6 +1592,8 @@
         function openShop() {
             inShop = true;
             document.exitPointerLock();
+            const compass = document.getElementById('enemy-compass');
+            if (compass) compass.style.display = 'none';
             generateShopOffers();
             updateShopUI();
             document.getElementById('shop-menu').style.display = 'flex';
@@ -1662,6 +1680,8 @@
 
         function pauseGame() {
             isPaused = true;
+            const compass = document.getElementById('enemy-compass');
+            if (compass) compass.style.display = 'none';
             document.getElementById('pause-menu').style.display = 'flex';
         }
 
@@ -1998,14 +2018,26 @@
 
             let hp = Math.floor(baseHp * (1 + (currentWave - 1) * 0.4));
             let shieldHp = type === 'shield' ? Math.floor(6 * (1 + (currentWave - 1) * 0.3)) : 0;
+            const canFly = type === 'stalker' || type === 'spitter' || (type === 'fast' && Math.random() < 0.4);
+            const flyBaseY = canFly ? scale / 2 + 1.35 + Math.random() * 0.45 : scale / 2;
+
+            if (canFly) {
+                const wingRing = new THREE.Mesh(
+                    new THREE.RingGeometry(0.55, 0.75, 18),
+                    new THREE.MeshBasicMaterial({ color: 0x88ccff, side: THREE.DoubleSide, transparent: true, opacity: 0.65 })
+                );
+                wingRing.rotation.x = Math.PI / 2;
+                wingRing.position.y = -scale * 0.28;
+                group.add(wingRing);
+            }
 
             let ex, ez;
             do {
                 ex = (Math.random() - 0.5) * (SIZE - 8);
                 ez = (Math.random() - 0.5) * (SIZE - 8);
-            } while (isBlocked(ex, ez, 0.8) || Math.hypot(ex - camera.position.x, ez - camera.position.z) < 10);
+            } while (isBlocked(ex, ez, 0.8, canFly) || Math.hypot(ex - camera.position.x, ez - camera.position.z) < 10);
 
-            group.position.set(ex, scale / 2, ez);
+            group.position.set(ex, flyBaseY, ez);
             const hpBar = createHPBar();
             group.add(hpBar);
 
@@ -2024,6 +2056,9 @@
                 dodgeCooldown: 0,
                 burnTimer: 0,
                 slowTimer: 0,
+                canFly: canFly,
+                flyBaseY: flyBaseY,
+                flyBob: Math.random() * Math.PI * 2,
                 isExploding: false
             };
 
@@ -2031,13 +2066,20 @@
             scene.add(group);
         }
 
-        function enemySpit(enemyPos, damage) {
+        function enemySpit(enemyOrPos, damage, speed = 24.0) {
+            const sourcePos = enemyOrPos && enemyOrPos.isObject3D ? enemyOrPos.position.clone() : enemyOrPos.clone();
+            const isBossShot = enemyOrPos && enemyOrPos.isObject3D && enemyOrPos.userData && enemyOrPos.userData.isBoss;
+            const origin = sourcePos.clone();
+            origin.y = isBossShot ? Math.max(2.8, sourcePos.y + 0.8) : Math.max(1.6, sourcePos.y + 0.25);
+
             const group = new THREE.Group();
             group.add(new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff00ff })));
-            group.position.copy(enemyPos); group.position.y = 1.5;
+            group.position.copy(origin);
 
-            const dir = new THREE.Vector3().subVectors(camera.position, enemyPos).normalize();
-            group.userData = { velocity: dir.multiplyScalar(16.0), damage: damage };
+            const target = camera.position.clone();
+            target.y = Math.max(1.35, camera.position.y - 0.1);
+            const dir = new THREE.Vector3().subVectors(target, origin).normalize();
+            group.userData = { velocity: dir.multiplyScalar(speed), damage: damage };
 
             scene.add(group);
             enemyProjectiles.push(group);
@@ -2120,10 +2162,8 @@
                 }
 
                 oilSlicks.forEach(oil => {
-                    if (oil.position.distanceTo(pos) <= radius) {
-                        oil.userData.isOnFire = true;
-                        oil.userData.fireTimer = 5.0;
-                        oil.material.color.setHex(0xff3300);
+                    if (!oil.userData.isSpent && oil.position.distanceTo(pos) <= radius) {
+                        igniteOilSlick(oil);
                     }
                 });
             }
@@ -2417,6 +2457,24 @@
             return false;
         }
 
+        function getBarrelHeightAt(x, z) {
+            for (let barrel of barrels) {
+                if (Math.hypot(x - barrel.position.x, z - barrel.position.z) < 0.82) {
+                    return 1.8;
+                }
+            }
+            return 0;
+        }
+
+        function isBarrelCollision(x, z, radius = 0.65, bodyY = 1.7) {
+            for (let barrel of barrels) {
+                const barrelTopY = barrel.position.y + 0.9;
+                if (bodyY > barrelTopY + 0.75) continue;
+                if (Math.hypot(x - barrel.position.x, z - barrel.position.z) < 0.72 + radius) return true;
+            }
+            return false;
+        }
+
         function isNearWallRunSurface(x, z) {
             const probe = 1.05;
             return isObstacleCollision(x + probe, z, 0.15) ||
@@ -2442,8 +2500,8 @@
             return false;
         }
 
-        function isBlocked(x, z, radius = 0.8) {
-            return isObstacleCollision(x, z, radius) || checkFenceCollision(x, z, radius) || isVoid(x, z);
+        function isBlocked(x, z, radius = 0.8, ignoreVoid = false, bodyY = 1.7) {
+            return isObstacleCollision(x, z, radius) || isBarrelCollision(x, z, radius, bodyY) || checkFenceCollision(x, z, radius, bodyY) || (!ignoreVoid && isVoid(x, z));
         }
 
         function getPlatformHeightAt(x, z) {
@@ -2484,7 +2542,7 @@
 
                 const enemyRadius = e.userData.isBoss ? 2.0 : 0.7;
 
-                if (!isBlocked(nextX, nextZ, enemyRadius)) {
+                if (!isBlocked(nextX, nextZ, enemyRadius, !!e.userData.canFly, e.position.y)) {
                     for (let other of enemies) {
                         if (other !== e && other.position.distanceTo(e.position) < 1.4) {
                             nextX += (e.position.x - other.position.x) * 0.04;
@@ -2543,6 +2601,8 @@
         function triggerDeath(reason) {
             if (stats.dead) return;
             stats.dead = true;
+            const compass = document.getElementById('enemy-compass');
+            if (compass) compass.style.display = 'none';
             const wavesSurvived = Math.max(0, currentWave - (waveInProgress ? 1 : 0));
             const accuracy = stats.shotsFired > 0 ? Math.round((stats.hits / stats.shotsFired) * 100) : 0;
             const earned = Math.max(1, Math.floor(wavesSurvived * 5 + stats.kills / 3 + (stats.scoreEarned || stats.score) / 500));
@@ -2599,7 +2659,7 @@
                             return;
                         }
                     } else {
-                        const platformY = getPlatformHeightAt(camera.position.x, camera.position.z);
+                        const platformY = Math.max(getPlatformHeightAt(camera.position.x, camera.position.z), getBarrelHeightAt(camera.position.x, camera.position.z));
                         const baseFloorY = (isSliding ? 1.15 : 1.7) + platformY;
 
                         playerVelY -= GRAVITY * delta;
@@ -2631,8 +2691,8 @@
                     const nextX = camera.position.x + dx;
                     const nextZ = camera.position.z + dz;
 
-                    if (!isObstacleCollision(nextX, camera.position.z) && !checkFenceCollision(nextX, camera.position.z, 0.6, camera.position.y)) camera.position.x = nextX;
-                    if (!isObstacleCollision(camera.position.x, nextZ) && !checkFenceCollision(camera.position.x, nextZ, 0.6, camera.position.y)) camera.position.z = nextZ;
+                    if (!isObstacleCollision(nextX, camera.position.z) && !isBarrelCollision(nextX, camera.position.z, 0.65, camera.position.y) && !checkFenceCollision(nextX, camera.position.z, 0.6, camera.position.y)) camera.position.x = nextX;
+                    if (!isObstacleCollision(camera.position.x, nextZ) && !isBarrelCollision(camera.position.x, nextZ, 0.65, camera.position.y) && !checkFenceCollision(camera.position.x, nextZ, 0.6, camera.position.y)) camera.position.z = nextZ;
                 } else if (cannonGroup) {
                     camera.position.y = 1.6;
                     playerVelY = 0;
@@ -2655,12 +2715,12 @@
                     camera.position.z = cannonGroup.position.z;
                 }
 
-                oilSlicks.forEach(oil => {
+                for (let i = oilSlicks.length - 1; i >= 0; i--) {
+                    const oil = oilSlicks[i];
                     if (oil.userData.isOnFire) {
                         oil.userData.fireTimer -= delta;
                         if (oil.userData.fireTimer <= 0) {
-                            oil.userData.isOnFire = false;
-                            oil.material.color.setHex(0x111111);
+                            removeOilSlickAt(i);
                         } else {
                             if (Math.hypot(camera.position.x - oil.position.x, camera.position.z - oil.position.z) < 2.0) {
                                 stats.hp -= 15 * delta;
@@ -2674,7 +2734,7 @@
                             });
                         }
                     }
-                });
+                }
 
                 for (let i = pickups.length - 1; i >= 0; i--) {
                     const p = pickups[i];
@@ -2709,6 +2769,9 @@
                 const now = Date.now();
                 enemies.forEach(e => {
                     const dist = e.position.distanceTo(camera.position);
+                    if (e.userData.canFly && !e.userData.isBoss) {
+                        e.position.y = e.userData.flyBaseY + Math.sin(now * 0.004 + e.userData.flyBob) * 0.28;
+                    }
                     if (e.userData.burnTimer > 0) {
                         e.userData.burnTimer -= delta;
                         e.userData.hp -= (e.userData.burnDps || 3.0) * delta;
@@ -2765,7 +2828,7 @@
 
                         if (now - e.userData.lastAttack > e.userData.attackCooldown) {
                             if (e.userData.bossId === "shooter") {
-                                enemySpit(e.position, e.userData.damage);
+                                enemySpit(e, e.userData.damage, 30.0);
                             } else if (e.userData.bossId === "shockwave") {
                                 createShockwave(e.position, e.userData.damage);
                             } else if (e.userData.bossId === "summoner") {
@@ -2782,14 +2845,14 @@
                             moveEnemySmart(e, camera.position, enemyDelta, isLateWavePhase);
                         }
                         if (dist < 24 && now - e.userData.lastAttack > 1800) {
-                            enemySpit(e.position, 14 * (e.userData.damageMult || 1));
+                            enemySpit(e, 14 * (e.userData.damageMult || 1), 25.0);
                             e.userData.lastAttack = now;
                         }
 
                     } else if (e.userData.type === 'spitter') {
                         if (dist > 12 || isLateWavePhase) moveEnemySmart(e, camera.position, enemyDelta, isLateWavePhase);
                         if (dist < 22 && now - e.userData.lastAttack > 2500) {
-                            enemySpit(e.position, 20 * (e.userData.damageMult || 1));
+                            enemySpit(e, 20 * (e.userData.damageMult || 1), 24.0);
                             e.userData.lastAttack = now;
                         }
 
@@ -2893,10 +2956,8 @@
                 if (!bullets[i]) continue;
 
                 for (let oil of oilSlicks) {
-                    if (segmentHitsGroundDisc(prevPosition, b.position, oil.position, 2.0)) {
-                        oil.userData.isOnFire = true;
-                        oil.userData.fireTimer = 5.0;
-                        oil.material.color.setHex(0xff3300);
+                    if (!oil.userData.isSpent && segmentHitsGroundDisc(prevPosition, b.position, oil.position, 2.0)) {
+                        igniteOilSlick(oil);
                     }
                 }
 
@@ -3012,6 +3073,7 @@
             const isBossWave = (currentWave % 5 === 0);
             document.getElementById('enemies-left').innerText = isBossWave ? enemies.length : ((enemiesToSpawnInWave - enemiesSpawnedInWave) + enemies.length);
 
+            updateEnemyCompass();
             renderer.render(scene, camera);
         }
 
