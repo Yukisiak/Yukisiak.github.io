@@ -1159,9 +1159,9 @@
         // Sensowne rozmiary skalowania dla każdej customowej broń; po wklejeniu modeli
         // kontrola rozmiaru jest jednolita i nie rozciąga widoku na wielkie obiekty.
         const WEAPON_MODEL_SIZES = {
-            pistol: 0.22,
+            pistol: 0.30,
             rifle: 2.0,
-            shotgun: 0.42,
+            shotgun: 2.0,
             smg: 0.26,
             burst: 0.28,
             sniper: 0.30,
@@ -1180,21 +1180,21 @@
         // ZMIANA TEJ LICZBY: zmieniasz yaw/pitch dla konkretnej broni, żeby odpowiednio ustawić w poziomie i pionie.
         // CO TO DAJE: model będzie obrócony względem lokalnego osi; bez tego GLTF może być źle ustawiony do pierwszej osoby.
         const WEAPON_MODEL_ORIENTATIONS = {
-            pistol: { rotationY: 100, rotationX: 0, rotationZ: 0 },
-            rifle: { rotationY: 100, rotationX: 0, rotationZ: 0 },
-            shotgun: { rotationY: 100, rotationX: 0, rotationZ: 0 },
-            smg: { rotationY: 100, rotationX: 0, rotationZ: 0 },
-            burst: { rotationY: 100, rotationX: 0, rotationZ: 0 },
-            sniper: { rotationY: 100, rotationX: 0, rotationZ: 0 },
-            crossbow: { rotationY: 100, rotationX: 0, rotationZ: 0 },
+            pistol: { rotationY: 250, rotationX: 0, rotationZ: 0 },
+            rifle: { rotationY: 250, rotationX: 0, rotationZ: 0 },
+            shotgun: { rotationY: 250, rotationX: 0, rotationZ: 0 },
+            smg: { rotationY: 250, rotationX: 0, rotationZ: 0 },
+            burst: { rotationY: 250, rotationX: 0, rotationZ: 0 },
+            sniper: { rotationY: 250, rotationX: 0, rotationZ: 0 },
+            crossbow: { rotationY: 250, rotationX: 0, rotationZ: 0 },
             wand: { rotationY: 0, rotationX: 0, rotationZ: 0 },
             ice_staff: { rotationY: 0, rotationX: 0, rotationZ: 0 },
-            plasma: { rotationY: 100, rotationX: 0, rotationZ: 0 },
-            railgun: { rotationY: 100, rotationX: 0, rotationZ: 0 },
-            grenade: { rotationY: 100, rotationX: 0, rotationZ: 0 },
-            flame: { rotationY: 100, rotationX: 0, rotationZ: 0 },
-            laser: { rotationY: 100, rotationX: 0, rotationZ: 0 },
-            boomerang: { rotationY: 100, rotationX: 0, rotationZ: 0 }
+            plasma: { rotationY: 250, rotationX: 0, rotationZ: 0 },
+            railgun: { rotationY: 250, rotationX: 0, rotationZ: 0 },
+            grenade: { rotationY: 250, rotationX: 0, rotationZ: 0 },
+            flame: { rotationY: 250, rotationX: 0, rotationZ: 0 },
+            laser: { rotationY: 250, rotationX: 0, rotationZ: 0 },
+            boomerang: { rotationY: 250, rotationX: 0, rotationZ: 0 }
         };
 
         const loadedModels = {};
