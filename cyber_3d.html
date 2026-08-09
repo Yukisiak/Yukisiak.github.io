@@ -1159,9 +1159,9 @@
         // Sensowne rozmiary skalowania dla każdej customowej broń; po wklejeniu modeli
         // kontrola rozmiaru jest jednolita i nie rozciąga widoku na wielkie obiekty.
         const WEAPON_MODEL_SIZES = {
-            pistol: 0.30,
+            pistol: 0.22,
             rifle: 2.0,
-            shotgun: 0.50,
+            shotgun: 0.42,
             smg: 0.26,
             burst: 0.28,
             sniper: 0.30,
@@ -1180,21 +1180,21 @@
         // ZMIANA TEJ LICZBY: zmieniasz yaw/pitch dla konkretnej broni, żeby odpowiednio ustawić w poziomie i pionie.
         // CO TO DAJE: model będzie obrócony względem lokalnego osi; bez tego GLTF może być źle ustawiony do pierwszej osoby.
         const WEAPON_MODEL_ORIENTATIONS = {
-            pistol: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
-            rifle: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
-            shotgun: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
-            smg: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
-            burst: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
-            sniper: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
-            crossbow: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
-            wand: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
-            ice_staff: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
-            plasma: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
-            railgun: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
-            grenade: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
-            flame: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
-            laser: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
-            boomerang: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 }
+            pistol: { rotationY: 180, rotationX: 0, rotationZ: 0 },
+            rifle: { rotationY: 180, rotationX: 0, rotationZ: 0 },
+            shotgun: { rotationY: 180, rotationX: 0, rotationZ: 0 },
+            smg: { rotationY: 180, rotationX: 0, rotationZ: 0 },
+            burst: { rotationY: 180, rotationX: 0, rotationZ: 0 },
+            sniper: { rotationY: 180, rotationX: 0, rotationZ: 0 },
+            crossbow: { rotationY: 180, rotationX: 0, rotationZ: 0 },
+            wand: { rotationY: 180, rotationX: 0, rotationZ: 0 },
+            ice_staff: { rotationY: 180, rotationX: 0, rotationZ: 0 },
+            plasma: { rotationY: 180, rotationX: 0, rotationZ: 0 },
+            railgun: { rotationY: 180, rotationX: 0, rotationZ: 0 },
+            grenade: { rotationY: 180, rotationX: 0, rotationZ: 0 },
+            flame: { rotationY: 180, rotationX: 0, rotationZ: 0 },
+            laser: { rotationY: 180, rotationX: 0, rotationZ: 0 },
+            boomerang: { rotationY: 180, rotationX: 0, rotationZ: 0 }
         };
 
         const loadedModels = {};
@@ -2934,7 +2934,7 @@
         // --- 9. VIEWMODEL RIG & RECOIL ---
         function setupWeaponRig() {
             weaponRig = new THREE.Group();
-            weaponRig.position.set(0.28, -0.45, -0.45);
+            weaponRig.position.set(0.28, -0.68, -0.45);
             camera.add(weaponRig);
             scene.add(camera);
 
@@ -2962,8 +2962,8 @@
             recoilRot.z *= (1 - 12 * delta);
 
             if (weaponRig) {
-                weaponRig.position.set(0.28 + recoilOffset.x, -0.45 + recoilOffset.y, -0.45 + recoilOffset.z);
-                weaponRig.rotation.set(recoilRot.x, 0, recoilRot.z);
+                weaponRig.position.set(0.28 + recoilOffset.x, -0.68 + recoilOffset.y, -0.45 + recoilOffset.z);
+                weaponRig.rotation.set(recoilRot.x, Math.PI, recoilRot.z);
             }
 
             if (muzzleFlashMesh && muzzleFlashMesh.material.opacity > 0) {
