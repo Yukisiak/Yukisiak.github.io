@@ -1063,9 +1063,9 @@
         // --- 2. MODEL PATHS & GLTF LOADERS ---
         // Osobne modele GLTF dla latających i chodzących wrogów (puste = proceduralny fallback)
         const FLYING_ENEMY_MODEL_PATH = 'models/enemy/fly_model.glb';
-        const WALKING_ENEMY_MODEL_PATH = '';
+        const WALKING_ENEMY_MODEL_PATH = 'models/enemy/zombie.glb';
         const MODEL_PATHS = {
-            cannon: '', enemyNormal: 'models/enemy/zombie.glb', enemyFast: '', enemySpitter: '',
+            cannon: '', enemyNormal: '', enemyFast: '', enemySpitter: '',
             bossTitan: '', bossBehemoth: '', bossPlasma: ''
         };
 
@@ -1100,33 +1100,108 @@
         const loadedModels = {};
         const loadedWeaponModels = {}; // Cache loaded custom weapon models
         const gltfLoader = new THREE.GLTFLoader();
+        let pendingModelLoads = 0;
+        let nextEnemyUid = 1;
+
+        function prepareGltfModel(root, options = {}) {
+            root.updateMatrixWorld(true);
+            const box = new THREE.Box3().setFromObject(root);
+            if (box.isEmpty()) return root;
+
+            const size = new THREE.Vector3();
+            const center = new THREE.Vector3();
+            box.getSize(size);
+            box.getCenter(center);
+
+            if (options.align === 'center') {
+                root.position.set(-center.x, -center.y, -center.z);
+            } else {
+                root.position.x -= center.x;
+                root.position.z -= center.z;
+                root.position.y -= box.min.y;
+            }
+
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const target = options.targetSize || options.targetHeight || 1;
+            if (maxDim > 0.0001) {
+                root.scale.multiplyScalar(target / maxDim);
+            }
+
+            root.traverse((child) => {
+                if (!child.isMesh) return;
+                child.castShadow = true;
+                child.receiveShadow = true;
+                if (Array.isArray(child.material)) {
+                    child.material = child.material.map((mat) => mat.clone());
+                } else if (child.material && child.material.clone) {
+                    child.material = child.material.clone();
+                }
+            });
+            return root;
+        }
+
+        function onModelLoadFinished() {
+            pendingModelLoads--;
+            if (pendingModelLoads <= 0 && weaponRig) {
+                switchWeaponSlot(currentWeaponSlot);
+            }
+        }
+
+        function isValidGltfScene(scene) {
+            if (!scene) return false;
+            let hasMesh = false;
+            scene.traverse((child) => {
+                if (child.isMesh) hasMesh = true;
+            });
+            return hasMesh;
+        }
+
+        function loadGltfAsset(path, onSuccess, label = 'model') {
+            pendingModelLoads++;
+            gltfLoader.load(
+                path,
+                (gltf) => {
+                    if (!isValidGltfScene(gltf.scene)) {
+                        console.warn(`[MODEL] Pusty model ${label} (${path}), używam zastępczego.`);
+                    } else {
+                        onSuccess(gltf.scene);
+                    }
+                    onModelLoadFinished();
+                },
+                undefined,
+                (err) => {
+                    console.warn(`[MODEL] Błąd ładowania ${label} (${path}), używam zastępczego.`, err);
+                    onModelLoadFinished();
+                }
+            );
+        }
 
         function loadGameModels() {
             // Load flying / walking enemy GLTF models (separate loaders)
             if (FLYING_ENEMY_MODEL_PATH && FLYING_ENEMY_MODEL_PATH.trim() !== '') {
-                gltfLoader.load(FLYING_ENEMY_MODEL_PATH, (gltf) => {
-                    loadedModels.flyingEnemy = gltf.scene;
+                loadGltfAsset(FLYING_ENEMY_MODEL_PATH, (scene) => {
+                    loadedModels.flyingEnemy = prepareGltfModel(scene, { targetHeight: 2.2 });
                     console.log('[ENEMY MODEL] Załadowano latający model:', FLYING_ENEMY_MODEL_PATH);
-                }, undefined, (err) => {
-                    console.warn('[ENEMY MODEL] Błąd ładowania latającego modelu, używam proceduralnego.');
-                });
+                }, 'latający wróg');
             }
             if (WALKING_ENEMY_MODEL_PATH && WALKING_ENEMY_MODEL_PATH.trim() !== '') {
-                gltfLoader.load(WALKING_ENEMY_MODEL_PATH, (gltf) => {
-                    loadedModels.walkingEnemy = gltf.scene;
+                loadGltfAsset(WALKING_ENEMY_MODEL_PATH, (scene) => {
+                    loadedModels.walkingEnemy = prepareGltfModel(scene, { targetHeight: 2.5 });
                     console.log('[ENEMY MODEL] Załadowano chodzący model:', WALKING_ENEMY_MODEL_PATH);
-                }, undefined, (err) => {
-                    console.warn('[ENEMY MODEL] Błąd ładowania chodzącego modelu, używam proceduralnego.');
-                });
+                }, 'chodzący wróg');
             }
 
             // Load enemy/cannon models
             Object.keys(MODEL_PATHS).forEach(key => {
                 const path = MODEL_PATHS[key];
                 if (path && path.trim() !== '') {
-                    gltfLoader.load(path, (gltf) => {
-                        loadedModels[key] = gltf.scene;
-                    });
+                    loadGltfAsset(path, (scene) => {
+                        if (key.startsWith('enemy') || key.startsWith('boss')) {
+                            loadedModels[key] = prepareGltfModel(scene, { targetHeight: key.startsWith('boss') ? 3.8 : 2.5 });
+                        } else {
+                            loadedModels[key] = prepareGltfModel(scene, { targetHeight: 2.0 });
+                        }
+                    }, key);
                 }
             });
 
@@ -1134,20 +1209,12 @@
             Object.keys(WEAPON_MODEL_PATHS).forEach(weaponId => {
                 const path = WEAPON_MODEL_PATHS[weaponId];
                 if (path && path.trim() !== '') {
-                    gltfLoader.load(
-                        path,
-                        (gltf) => {
-                            // Scale model to fit viewmodel rig (adjust if needed)
-                            const model = gltf.scene;
-                            model.scale.set(0.18, 0.18, 0.18);
-                            loadedWeaponModels[weaponId] = model;
-                            console.log(`[WEAPON MODEL] Załadowano: ${weaponId} <- ${path}`);
-                        },
-                        undefined,
-                        (err) => {
-                            console.warn(`[WEAPON MODEL] Błąd ładowania ${weaponId} (${path}), używam modelu zastępczego.`);
-                        }
-                    );
+                    loadGltfAsset(path, (scene) => {
+                        const model = prepareGltfModel(scene, { align: 'center', targetSize: 0.45 });
+                        model.rotation.y = Math.PI;
+                        loadedWeaponModels[weaponId] = model;
+                        console.log(`[WEAPON MODEL] Załadowano: ${weaponId} <- ${path}`);
+                    }, `broń:${weaponId}`);
                 }
             });
         }
@@ -1444,8 +1511,16 @@
         }
 
         // --- 4. HIGH-DETAIL PROCEDURAL 3D FPS WEAPON MESH GENERATOR ---
-        function create3DWeaponMesh(type) {
+        function create3DWeaponMesh(weaponId) {
             const group = new THREE.Group();
+            const rifleLike = ['rifle', 'smg', 'burst', 'laser'];
+            const heavyLike = ['sniper', 'railgun'];
+            const heavySupport = ['flame', 'grenade', 'plasma'];
+            const type = rifleLike.includes(weaponId) ? 'rifle'
+                : weaponId === 'shotgun' ? 'shotgun'
+                    : heavyLike.includes(weaponId) ? 'sniper'
+                        : heavySupport.includes(weaponId) ? 'flame'
+                            : 'pistol';
 
             if (type === 'shotgun') {
                 const body = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.22, 0.85), new THREE.MeshStandardMaterial({ color: 0x1f1f24, metalness: 0.8 }));
@@ -1805,18 +1880,65 @@
             return { dx, dz };
         }
 
+        function getHorizontalDistance(a, b) {
+            return Math.hypot(a.x - b.x, a.z - b.z);
+        }
+
+        function resolveEnemyModelKey(type, canFly) {
+            if (canFly && loadedModels.flyingEnemy) return 'flyingEnemy';
+            if (!canFly) {
+                if (loadedModels.walkingEnemy) return 'walkingEnemy';
+                if ((type === 'fast' || type === 'dodger' || type === 'kamikaze') && loadedModels.enemyFast) return 'enemyFast';
+                if ((type === 'spitter' || type === 'stalker') && loadedModels.enemySpitter) return 'enemySpitter';
+                if (loadedModels.enemyNormal) return 'enemyNormal';
+            }
+            return null;
+        }
+
         function createEnemyMesh(type, canFly) {
-            if (canFly && loadedModels.flyingEnemy) {
-                const clone = loadedModels.flyingEnemy.clone();
+            const modelKey = resolveEnemyModelKey(type, canFly);
+            if (modelKey && loadedModels[modelKey]) {
+                const clone = loadedModels[modelKey].clone(true);
                 clone.userData.usesExternalModel = true;
+                clone.userData.modelKey = modelKey;
                 return clone;
             }
-            if (!canFly && loadedModels.walkingEnemy) {
-                const clone = loadedModels.walkingEnemy.clone();
-                clone.userData.usesExternalModel = true;
-                return clone;
+            const mesh = createProceduralEnemyMesh(type);
+            mesh.userData.usesExternalModel = false;
+            return mesh;
+        }
+
+        function computeEnemyHitMetrics(enemy) {
+            if (enemy.userData.hitMetrics) return enemy.userData.hitMetrics;
+
+            const box = new THREE.Box3();
+            enemy.traverse((child) => {
+                if (child.userData && child.userData.isHpBar) return;
+                if (child.isMesh || child.isSprite) box.expandByObject(child);
+            });
+
+            if (box.isEmpty()) {
+                enemy.userData.hitMetrics = {
+                    bodyRadius: 1.75,
+                    totalHeight: 2.85,
+                    footOffset: 0
+                };
+                return enemy.userData.hitMetrics;
             }
-            return createProceduralEnemyMesh(type);
+
+            const size = new THREE.Vector3();
+            box.getSize(size);
+            enemy.userData.hitMetrics = {
+                bodyRadius: Math.max(0.85, Math.max(size.x, size.z) * 0.42),
+                totalHeight: Math.max(1.8, size.y),
+                footOffset: box.min.y - enemy.position.y
+            };
+            return enemy.userData.hitMetrics;
+        }
+
+        function refreshEnemyHitMetrics(enemy) {
+            delete enemy.userData.hitMetrics;
+            return computeEnemyHitMetrics(enemy);
         }
 
         function getEnemyGroundY(x, z) {
@@ -1909,7 +2031,7 @@
 
         // Wyświetla unoszącą się liczbę obrażeń z kumulacją combo
         function showFloatingDamage(enemy, damageAmount) {
-            const enemyId = enemy.id;
+            const enemyId = enemy.userData.uid;
             const now = Date.now();
             let combo = enemyDamageCombos[enemyId];
             if (!combo || now - combo.lastHit > COMBO_RESET_MS) {
@@ -1988,6 +2110,7 @@
             enemyDamageCombos = {};
             floatingDamageNumbers.forEach(s => scene && scene.remove(s));
             floatingDamageNumbers = [];
+            nextEnemyUid = 1;
             cyberAudio.stopHeartbeat();
             cyberAudio.deathEffectActive = false;
             cyberAudio.deathPitchFactor = 1.0;
@@ -2145,10 +2268,10 @@
                 const weaponId = weapons[currentWeapon].id;
                 if (loadedWeaponModels[weaponId]) {
                     // Use custom loaded 3D model
-                    currentWeaponMesh = loadedWeaponModels[weaponId].clone();
+                    currentWeaponMesh = loadedWeaponModels[weaponId].clone(true);
                 } else {
                     // Fallback: use procedural mesh
-                    currentWeaponMesh = create3DWeaponMesh(weapons[currentWeapon].type);
+                    currentWeaponMesh = create3DWeaponMesh(weaponId);
                 }
 
                 weaponRig.add(currentWeaponMesh);
@@ -2834,6 +2957,7 @@
             syncFovControls(playerFov);
 
             setupWeaponRig();
+            switchWeaponSlot(currentWeaponSlot);
 
             raycaster = new THREE.Raycaster();
 
@@ -3117,6 +3241,7 @@
             const sprite = new THREE.Sprite(spriteMat);
             sprite.scale.set(1.8, 0.25, 1);
             sprite.renderOrder = 999;
+            sprite.userData.isHpBar = true;
             return sprite;
         }
 
@@ -3131,7 +3256,7 @@
             const selected = bossTypes[Math.floor(Math.random() * bossTypes.length)];
             const scaledHp = Math.floor(selected.hp * (1 + (currentWave / 5 - 1) * 0.5));
 
-            let entity = loadedModels[selected.modelKey] ? loadedModels[selected.modelKey].clone() : createProceduralEnemyMesh(selected.modelKey);
+            let entity = loadedModels[selected.modelKey] ? loadedModels[selected.modelKey].clone(true) : createProceduralEnemyMesh(selected.modelKey);
             entity.scale.set(selected.scale, selected.scale, selected.scale);
 
             let ex, ez;
@@ -3145,8 +3270,11 @@
             const hpBar = createHPBar();
             hpBar.position.y = selected.scale + 0.6;
             entity.add(hpBar);
+            refreshEnemyHitMetrics(entity);
 
             entity.userData = {
+                uid: nextEnemyUid++,
+                usesExternalModel: !!loadedModels[selected.modelKey],
                 isBoss: true,
                 bossId: selected.bossId,
                 name: selected.name,
@@ -3320,6 +3448,9 @@
             const hoverHeight = getEnemyHoverHeight(scale);
 
             group = createEnemyMesh(type, canFly);
+            const enemyUid = nextEnemyUid++;
+            const usesExternalModel = !!group.userData.usesExternalModel;
+            const modelKey = group.userData.modelKey || null;
 
             let ex, ez;
             do {
@@ -3334,8 +3465,12 @@
             const hpBar = createHPBar();
             hpBar.position.y = scale + 0.4;
             group.add(hpBar);
+            refreshEnemyHitMetrics(group);
 
             group.userData = {
+                uid: enemyUid,
+                usesExternalModel: usesExternalModel,
+                modelKey: modelKey,
                 type: type,
                 maxHp: hp,
                 hp: hp,
@@ -3477,7 +3612,7 @@
 
         function damageEnemiesInRadius(pos, radius, damage, sourceEnemyId = null, playerOwned = true) {
             enemies.forEach(e => {
-                if (sourceEnemyId && e.id === sourceEnemyId) return;
+                if (sourceEnemyId && e.userData.uid === sourceEnemyId) return;
                 if (e.position.distanceTo(pos) <= radius) {
                     e.userData.hp -= damage;
                     if (playerOwned) {
@@ -3648,6 +3783,21 @@
 
         function getEnemyHitBounds(e) {
             const isBoss = !!e.userData.isBoss;
+            if (e.userData.usesExternalModel || isBoss) {
+                const metrics = computeEnemyHitMetrics(e);
+                const footY = e.position.y + (metrics.footOffset || 0);
+                const totalHeight = metrics.totalHeight;
+                const bodyRadius = isBoss ? Math.max(1.55, metrics.bodyRadius) : metrics.bodyRadius;
+                const bodyCenterY = footY + totalHeight * 0.45;
+                const headCenterY = footY + totalHeight * 0.82;
+                return {
+                    bodyCenter: new THREE.Vector3(e.position.x, bodyCenterY, e.position.z),
+                    headCenter: new THREE.Vector3(e.position.x, headCenterY, e.position.z),
+                    bodyRadius: bodyRadius,
+                    headRadius: bodyRadius * 0.92
+                };
+            }
+
             const typeScale = e.userData.type === 'bruiser' ? 1.15 : (e.userData.type === 'kamikaze' ? 0.85 : 1.0);
             const bodyRadius = isBoss ? 1.55 : 1.75 * typeScale;
             const totalHeight = isBoss ? 4.2 : (e.userData.type === 'bruiser' ? 3.4 : 2.85);
@@ -4204,6 +4354,8 @@
 
                 const now = Date.now();
                 enemies.forEach(e => {
+                    const horizDist = getHorizontalDistance(e.position, camera.position);
+                    const heightDiff = Math.abs(e.position.y - camera.position.y);
                     const dist = e.position.distanceTo(camera.position);
 
                     if (e.userData.canFly && !e.userData.isBoss) {
@@ -4289,7 +4441,7 @@
                             }
                         }
 
-                        if (dist < 2.0 && !e.userData.isExploding) {
+                        if (horizDist < 2.2 && heightDiff < 2.8 && !e.userData.isExploding) {
                             e.userData.isExploding = true;
                             setTimeout(() => {
                                 if (e.userData.hp > 0) {
@@ -4335,7 +4487,8 @@
 
                     } else {
                         moveEnemySmart(e, camera.position, enemyDelta, isLateWavePhase);
-                        if (dist < 1.3) {
+                        const contactRange = e.userData.type === 'bruiser' ? 2.35 : (e.userData.type === 'fast' || e.userData.type === 'dodger' ? 1.95 : 2.1);
+                        if (horizDist < contactRange && heightDiff < 2.6) {
                             const contactDamage = e.userData.type === 'fast' || e.userData.type === 'dodger' ? 15 : (e.userData.type === 'bruiser' ? 38 : 25);
                             const damageMult = (selectedCharacterId === 'breacher' ? 0.75 : 1.0);
                             damagePlayer(contactDamage * e.userData.damageMult * damageMult * enemyDelta);
@@ -4448,7 +4601,7 @@
 
                 for (let j = enemies.length - 1; j >= 0; j--) {
                     const e = enemies[j];
-                    if (b.userData.hitEnemies && b.userData.hitEnemies.includes(e.id)) continue;
+                    if (b.userData.hitEnemies && b.userData.hitEnemies.includes(e.userData.uid)) continue;
 
                     const hitResult = checkEnemyBulletHit(e, prevPosition, b.position);
                     if (hitResult.hit) {
@@ -4486,12 +4639,12 @@
                         }
                         if (b.userData.splash) {
                             createExplosion(e.position, b.userData.splash, 0);
-                            damageEnemiesInRadius(e.position, b.userData.splash, b.userData.damage * 0.45, e.id, true);
+                            damageEnemiesInRadius(e.position, b.userData.splash, b.userData.damage * 0.45, e.userData.uid, true);
                         }
                         applyVampireLeech('hit');
                         updateEnemyHpDisplay(e);
 
-                        if (b.userData.hitEnemies) b.userData.hitEnemies.push(e.id);
+                        if (b.userData.hitEnemies) b.userData.hitEnemies.push(e.userData.uid);
                         b.userData.hitsLeft--;
 
                         if (b.userData.hitsLeft <= 0) {
@@ -4545,7 +4698,7 @@
                     continue;
                 }
 
-                if (ep.position.distanceTo(camera.position) < 1.2) {
+                if (getHorizontalDistance(ep.position, camera.position) < 1.15 && Math.abs(ep.position.y - camera.position.y) < 1.8) {
                     const damageMult = (selectedCharacterId === 'breacher' ? 0.75 : 1.0);
                     damagePlayer((ep.userData.damage || 20) * damageMult);
                     scene.remove(ep);
