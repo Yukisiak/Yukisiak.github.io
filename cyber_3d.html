@@ -3556,31 +3556,55 @@
         }
 
         // Losuje typ wroga i dodaje go na mapę (w tym wroga z tarczą i kamikaze)
-        function spawnEnemy() {
+        // ZMIANA TEJ FUNKCJI: `spawnEnemy(typeOverride)` dopuszcza jawne odtworzenie konkretnego typu - używa go `necromancer` do wywołania konkretnej "summon" minionów.
+        // CO TO DAJE: nie znikają nam ścieżki typu (`spawnEnemy()` jest teraz zdefiniowane przez wąskie wejście w runtime, a nie przez losowy ciąg nieokreślonych przypadków).
+        function spawnEnemy(typeOverride = null) {
             if (stats.dead) return;
-            const roll = Math.random();
+
+            const typeTemplates = {
+                necromancer: { baseHp: 7, speed: 2.0, scale: 2.6 },
+                bruiser: { baseHp: 8, speed: 2.2, scale: 3.2 },
+                dodger: { baseHp: 2, speed: 7.4, scale: 1.9 },
+                stalker: { baseHp: 3, speed: 4.3, scale: 2.2 },
+                shield: { baseHp: 5, speed: 2.2, scale: 2.5 },
+                buffer: { baseHp: 4, speed: 2.5, scale: 2.4 },
+                kamikaze: { baseHp: 1, speed: 9.5, scale: 1.5 },
+                fast: { baseHp: 1, speed: 8.5, scale: 1.8 },
+                spitter: { baseHp: 4, speed: 2.0, scale: 2.8 },
+                normal: { baseHp: 2, speed: 3.5, scale: 2.5 }
+            };
+
             let type = 'normal', baseHp = 2, speed = 3.5, scale = 2.5;
 
-            if (roll > 0.94) {
-                type = 'necromancer'; baseHp = 7; speed = 2.0; scale = 2.6;
-            } else if (roll > 0.88) {
-                type = 'bruiser'; baseHp = 8; speed = 2.2; scale = 3.2;
-            } else if (roll > 0.80) {
-                type = 'dodger'; baseHp = 2; speed = 7.4; scale = 1.9;
-            } else if (roll > 0.72) {
-                type = 'stalker'; baseHp = 3; speed = 4.3; scale = 2.2;
-            } else if (roll > 0.62) {
-                type = 'shield'; baseHp = 5; speed = 2.2; scale = 2.5;
-            } else if (roll > 0.52) {
-                type = 'buffer'; baseHp = 4; speed = 2.5; scale = 2.4;
-            } else if (roll > 0.40) {
-                type = 'kamikaze'; baseHp = 1; speed = 9.5; scale = 1.5;
-            } else if (roll > 0.26) {
-                type = 'fast'; baseHp = 1; speed = 8.5; scale = 1.8;
-            } else if (roll > 0.13) {
-                type = 'spitter'; baseHp = 4; speed = 2.0; scale = 2.8;
+            if (typeOverride && typeTemplates[typeOverride]) {
+                type = typeOverride;
+                baseHp = typeTemplates[typeOverride].baseHp;
+                speed = typeTemplates[typeOverride].speed;
+                scale = typeTemplates[typeOverride].scale;
             } else {
-                type = 'normal'; baseHp = 2; speed = 3.5; scale = 2.5;
+                const roll = Math.random();
+
+                if (roll > 0.94) {
+                    type = 'necromancer'; baseHp = 7; speed = 2.0; scale = 2.6;
+                } else if (roll > 0.88) {
+                    type = 'bruiser'; baseHp = 8; speed = 2.2; scale = 3.2;
+                } else if (roll > 0.80) {
+                    type = 'dodger'; baseHp = 2; speed = 7.4; scale = 1.9;
+                } else if (roll > 0.72) {
+                    type = 'stalker'; baseHp = 3; speed = 4.3; scale = 2.2;
+                } else if (roll > 0.62) {
+                    type = 'shield'; baseHp = 5; speed = 2.2; scale = 2.5;
+                } else if (roll > 0.52) {
+                    type = 'buffer'; baseHp = 4; speed = 2.5; scale = 2.4;
+                } else if (roll > 0.40) {
+                    type = 'kamikaze'; baseHp = 1; speed = 9.5; scale = 1.5;
+                } else if (roll > 0.26) {
+                    type = 'fast'; baseHp = 1; speed = 8.5; scale = 1.8;
+                } else if (roll > 0.13) {
+                    type = 'spitter'; baseHp = 4; speed = 2.0; scale = 2.8;
+                } else {
+                    type = 'normal'; baseHp = 2; speed = 3.5; scale = 2.5;
+                }
             }
 
             let group;
@@ -3591,7 +3615,7 @@
             // W tej wersji tylko `kamikaze` dostaje taki tryb; reszta wraca do fallbacku `createProceduralEnemyMesh()`.
             const naturalFlyer = type === 'kamikaze';
             const flyingChance = 0;
-            const canFly = naturalFlyer || (type === 'kamikaze') || Math.random() < flyingChance;
+            const canFly = naturalFlyer || Math.random() < flyingChance;
             const hoverHeight = getEnemyHoverHeight(scale);
 
             group = createEnemyMesh(type, canFly);
@@ -4558,7 +4582,11 @@
                         if (!e.userData.lastSummon) e.userData.lastSummon = 0;
                         if (now - e.userData.lastSummon > 5500) {
                             if (enemies.length < (hordeWaveActive ? 42 : 25)) {
-                                spawnEnemy();
+                                // Necromancer nie losuje "czegoś z góry" i nie ma tu żadnego "respawn" na siłę.
+                                // Tu musi się wywołać konkretny przypadek minionów, bo randomowe `spawnEnemy()` robi za dużo niepowiązanych stanów.
+                                const summonPool = ['normal', 'fast', 'shield', 'buffer'];
+                                const summonType = summonPool[Math.floor(Math.random() * summonPool.length)];
+                                spawnEnemy(summonType);
                                 cyberAudio.playAbilitySound('necromancer');
                             }
                             e.userData.lastSummon = now;
