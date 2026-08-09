@@ -1061,12 +1061,65 @@
         const cyberAudio = new CyberAudio();
 
         // --- 2. MODEL PATHS & GLTF LOADERS ---
-        // Osobne modele GLTF dla latających i chodzących wrogów (puste = proceduralny fallback)
-        const FLYING_ENEMY_MODEL_PATH = 'models/enemy/fly_model.glb';
-        const WALKING_ENEMY_MODEL_PATH = '';
+        // Każda klasa wroga ma własne miejsce na model ground/flying; puste pola = proceduralny fallback.
+        // Wklej swój .glb/.gltf dla każdej klasy; kod automatycznie skaluje go do sensownej wielkości.
+        const ENEMY_MODEL_PATHS = {
+            normal: {
+                ground: '',
+                flying: ''
+            },
+            fast: {
+                ground: '',
+                flying: ''
+            },
+            spitter: {
+                ground: '',
+                flying: ''
+            },
+            shield: {
+                ground: '',
+                flying: ''
+            },
+            buffer: {
+                ground: '',
+                flying: ''
+            },
+            kamikaze: {
+                ground: '',
+                flying: 'models/enemy/fly_model.glb'
+            },
+            dodger: {
+                ground: '',
+                flying: ''
+            },
+            bruiser: {
+                ground: '',
+                flying: ''
+            },
+            stalker: {
+                ground: '',
+                flying: ''
+            },
+            necromancer: {
+                ground: '',
+                flying: ''
+            },
+            bossTitan: {
+                ground: '',
+                flying: ''
+            },
+            bossBehemoth: {
+                ground: '',
+                flying: ''
+            },
+            bossPlasma: {
+                ground: '',
+                flying: ''
+            }
+        };
+
         const MODEL_PATHS = {
-            cannon: 'models/cannon.glb', enemyNormal: '', enemyFast: '', enemySpitter: '',
-            bossTitan: '', bossBehemoth: '', bossPlasma: ''
+            cannon: ''
         };
 
         // =====================================================================SS
@@ -1080,23 +1133,42 @@
         //   lol/models/weapons/pistol.glb
         // =====================================================================
         const WEAPON_MODEL_PATHS = {
-            pistol: 'models/pistol.glb',   // models/weapons/pistol.glb
-            rifle: 'models/rifle.glb',   // models/weapons/rifle.glb
-            shotgun: 'models/shotgun.glb',   // models/weapons/shotgun.glb
-            smg: 'models/smg.glb',   // models/weapons/smg.glb
-            burst: 'models/burst.glb',   // models/weapons/burst.glb
-            sniper: 'models/sniper.glb',   // models/weapons/sniper.glb
-            crossbow: 'models/crossbow.glb',   // models/weapons/crossbow.glb
-            wand: 'models/wand.glb',   // models/weapons/wand.glb
-            ice_staff: 'models/staff.glb',   // models/weapons/ice_staff.glb
-            plasma: 'models/plasma.glb',   // models/weapons/plasma.glb
-            railgun: 'models/railgun.glb',   // models/weapons/railgun.glb
-            grenade: 'models/grenade.glb',   // models/weapons/grenade.glb
-            flame: 'models/flame.glb',   // models/weapons/flame.glb
-            laser: 'models/laser.glb',   // models/weapons/laser.glb
-            boomerang: 'models/boomerang.glb'    // models/weapons/boomerang.glb
+            pistol: 'models/pistol.glb',
+            rifle: 'models/rifle.glb',
+            shotgun: 'models/shotgun.glb',
+            smg: 'models/uzi.glb',
+            burst: '',
+            sniper: '',
+            crossbow: '',
+            wand: '',
+            ice_staff: 'models/staff.glb',
+            plasma: '',
+            railgun: '',
+            grenade: '',
+            flame: '',
+            laser: '',
+            boomerang: ''
         };
 
+        // Sensowne rozmiary skalowania dla każdej customowej broń; po wklejeniu modeli
+        // kontrola rozmiaru jest jednolita i nie rozciąga widoku na wielkie obiekty.
+        const WEAPON_MODEL_SIZES = {
+            pistol: 0.18,
+            rifle: 0.25,
+            shotgun: 0.28,
+            smg: 0.26,
+            burst: 0.28,
+            sniper: 0.30,
+            crossbow: 0.28,
+            wand: 0.24,
+            ice_staff: 0.28,
+            plasma: 0.30,
+            railgun: 0.34,
+            grenade: 0.24,
+            flame: 0.30,
+            laser: 0.34,
+            boomerang: 0.24
+        };
         const loadedModels = {};
         const loadedWeaponModels = {}; // Cache loaded custom weapon models
         const gltfLoader = new THREE.GLTFLoader();
@@ -1177,27 +1249,38 @@
         }
 
         function loadGameModels() {
-            // Load flying / walking enemy GLTF models (separate loaders)
-            if (FLYING_ENEMY_MODEL_PATH && FLYING_ENEMY_MODEL_PATH.trim() !== '') {
-                loadGltfAsset(FLYING_ENEMY_MODEL_PATH, (scene) => {
-                    loadedModels.flyingEnemy = prepareGltfModel(scene, { targetHeight: 2.2 });
-                    console.log('[ENEMY MODEL] Załadowano latający model:', FLYING_ENEMY_MODEL_PATH);
-                }, 'latający wróg');
-            }
-            if (WALKING_ENEMY_MODEL_PATH && WALKING_ENEMY_MODEL_PATH.trim() !== '') {
-                loadGltfAsset(WALKING_ENEMY_MODEL_PATH, (scene) => {
-                    loadedModels.walkingEnemy = prepareGltfModel(scene, { targetHeight: 2.5 });
-                    console.log('[ENEMY MODEL] Załadowano chodzący model:', WALKING_ENEMY_MODEL_PATH);
-                }, 'chodzący wróg');
-            }
+            Object.entries(ENEMY_MODEL_PATHS).forEach(([enemyType, variants]) => {
+                const groundPath = variants.ground;
+                const flyingPath = variants.flying;
+
+                if (groundPath && groundPath.trim() !== '') {
+                    loadGltfAsset(groundPath, (scene) => {
+                        loadedModels[`${enemyType}Ground`] = prepareGltfModel(scene, {
+                            targetHeight: enemyType.startsWith('boss') ? 3.8 : 2.5,
+                            align: 'ground'
+                        });
+                        console.log(`[ENEMY MODEL] Załadowano model ziemny ${enemyType}:`, groundPath);
+                    }, `${enemyType} ground`);
+                }
+
+                if (flyingPath && flyingPath.trim() !== '') {
+                    loadGltfAsset(flyingPath, (scene) => {
+                        loadedModels[`${enemyType}Flying`] = prepareGltfModel(scene, {
+                            targetHeight: enemyType === 'kamikaze' ? 1.7 : 2.2,
+                            align: 'flying'
+                        });
+                        console.log(`[ENEMY MODEL] Załadowano model latający ${enemyType}:`, flyingPath);
+                    }, `${enemyType} flying`);
+                }
+            });
 
             // Load enemy/cannon models
             Object.keys(MODEL_PATHS).forEach(key => {
                 const path = MODEL_PATHS[key];
                 if (path && path.trim() !== '') {
                     loadGltfAsset(path, (scene) => {
-                        if (key.startsWith('enemy') || key.startsWith('boss')) {
-                            loadedModels[key] = prepareGltfModel(scene, { targetHeight: key.startsWith('boss') ? 3.8 : 2.5 });
+                        if (key.startsWith('boss')) {
+                            loadedModels[key] = prepareGltfModel(scene, { targetHeight: 3.8 });
                         } else {
                             loadedModels[key] = prepareGltfModel(scene, { targetHeight: 2.0 });
                         }
@@ -1210,7 +1293,8 @@
                 const path = WEAPON_MODEL_PATHS[weaponId];
                 if (path && path.trim() !== '') {
                     loadGltfAsset(path, (scene) => {
-                        const model = prepareGltfModel(scene, { align: 'center', targetSize: 0.45 });
+                        const size = WEAPON_MODEL_SIZES[weaponId] || 0.22;
+                        const model = prepareGltfModel(scene, { align: 'center', targetSize: size });
                         model.rotation.y = Math.PI;
                         loadedWeaponModels[weaponId] = model;
                         console.log(`[WEAPON MODEL] Załadowano: ${weaponId} <- ${path}`);
@@ -1885,13 +1969,15 @@
         }
 
         function resolveEnemyModelKey(type, canFly) {
+            const variant = canFly ? 'Flying' : 'Ground';
+            const key = `${type}${variant}`;
+            if (loadedModels[key]) return key;
+
+            if (canFly && loadedModels['kamikazeFlying']) return 'kamikazeFlying';
+            if (!canFly && loadedModels['kamikazeGround']) return 'kamikazeGround';
+
             if (canFly && loadedModels.flyingEnemy) return 'flyingEnemy';
-            if (!canFly) {
-                if (loadedModels.walkingEnemy) return 'walkingEnemy';
-                if ((type === 'fast' || type === 'dodger' || type === 'kamikaze') && loadedModels.enemyFast) return 'enemyFast';
-                if ((type === 'spitter' || type === 'stalker') && loadedModels.enemySpitter) return 'enemySpitter';
-                if (loadedModels.enemyNormal) return 'enemyNormal';
-            }
+            if (!canFly && loadedModels.walkingEnemy) return 'walkingEnemy';
             return null;
         }
 
@@ -1901,6 +1987,7 @@
                 const clone = loadedModels[modelKey].clone(true);
                 clone.userData.usesExternalModel = true;
                 clone.userData.modelKey = modelKey;
+                clone.rotation.y = 0;
                 return clone;
             }
             const mesh = createProceduralEnemyMesh(type);
@@ -3442,9 +3529,9 @@
 
             let group;
             let hp = Math.floor(baseHp * (1 + (currentWave - 1) * 0.4));
-            const naturalFlyer = type === 'stalker' || type === 'spitter' || type === 'necromancer';
+            const naturalFlyer = type === 'stalker' || type === 'spitter' || type === 'necromancer' || type === 'kamikaze';
             const flyingChance = Math.min(0.34, 0.16 + currentWave * 0.01);
-            const canFly = naturalFlyer || Math.random() < flyingChance;
+            const canFly = naturalFlyer || (type === 'kamikaze') || Math.random() < flyingChance;
             const hoverHeight = getEnemyHoverHeight(scale);
 
             group = createEnemyMesh(type, canFly);
