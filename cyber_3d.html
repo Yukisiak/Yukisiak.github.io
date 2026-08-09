@@ -1061,60 +1061,63 @@
         const cyberAudio = new CyberAudio();
 
         // --- 2. MODEL PATHS & GLTF LOADERS ---
-        // Każda klasa wroga ma własne miejsce na model ground/flying; puste pola = proceduralny fallback.
-        // Wklej swój .glb/.gltf dla każdej klasy; kod automatycznie skaluje go do sensownej wielkości.
+        // KOMENTARZ POD KOD: ta sekcja jest odpowiedzialna za wybór modeli GLTF dla wrogów.
+        // ZMIANA TEJ SEKCIJI: wpisujesz tutaj ścieżkę do modelu dla konkretnej klasy enemy.
+        // CO TO DAJE: gdy wróg się spawnuje, `createEnemyMesh()` pobierze odpowiadający mu model, zamiast robić proceduralny fallback.
+        // Uwaga: każdy typ enemy ma swoją konfigurację, ale dla wersji fly tylko `kamikaze` ma sensowny model latający.
+        // Pozostałe typy są w tej chwili z góry fallbackowe (`createProceduralEnemyMesh()`), chyba że w przyszłości wkleisz model do `ground`.
         const ENEMY_MODEL_PATHS = {
             normal: {
-                ground: '',
-                flying: ''
+                ground: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             fast: {
-                ground: '',
-                flying: ''
+                ground: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             spitter: {
-                ground: '',
-                flying: ''
+                ground: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             shield: {
-                ground: '',
-                flying: ''
+                ground: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             buffer: {
-                ground: '',
-                flying: ''
+                ground: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             kamikaze: {
-                ground: '',
-                flying: 'models/enemy/fly_model.glb'
+                ground: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: 'models/enemy/fly_model.glb', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             dodger: {
-                ground: '',
-                flying: ''
+                ground: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             bruiser: {
-                ground: '',
-                flying: ''
+                ground: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             stalker: {
-                ground: '',
-                flying: ''
+                ground: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             necromancer: {
-                ground: '',
-                flying: ''
+                ground: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             bossTitan: {
-                ground: '',
-                flying: ''
+                ground: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             bossBehemoth: {
-                ground: '',
-                flying: ''
+                ground: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             bossPlasma: {
-                ground: '',
-                flying: ''
+                ground: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 }
             }
         };
 
@@ -1150,6 +1153,9 @@
             boomerang: ''
         };
 
+        // KOMENTARZ POD KOD: kolejna konfiguracja, odpowiedzialna za skalę każdej customowej broni.
+        // ZMIANA TEJ LICZBY: jeśli zmienisz np. `pistol: 0.18` na `0.24`, model będzie większy.
+        // CO TO DAJE: w praktyce sterujesz “rozmiarem” załadowanego modelu, więc po złożeniu prawidłowo rozmiar broni nie będzie przesadzał w kamerze.
         // Sensowne rozmiary skalowania dla każdej customowej broń; po wklejeniu modeli
         // kontrola rozmiaru jest jednolita i nie rozciąga widoku na wielkie obiekty.
         const WEAPON_MODEL_SIZES = {
@@ -1169,6 +1175,28 @@
             laser: 0.34,
             boomerang: 0.24
         };
+
+        // Dodatkowa konfiguracja orientacji modelu broni w przestrzeni kamery.
+        // ZMIANA TEJ LICZBY: zmieniasz yaw/pitch dla konkretnej broni, żeby odpowiednio ustawić w poziomie i pionie.
+        // CO TO DAJE: model będzie obrócony względem lokalnego osi; bez tego GLTF może być źle ustawiony do pierwszej osoby.
+        const WEAPON_MODEL_ORIENTATIONS = {
+            pistol: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
+            rifle: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
+            shotgun: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
+            smg: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
+            burst: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
+            sniper: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
+            crossbow: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
+            wand: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
+            ice_staff: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
+            plasma: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
+            railgun: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
+            grenade: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
+            flame: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
+            laser: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
+            boomerang: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 }
+        };
+
         const loadedModels = {};
         const loadedWeaponModels = {}; // Cache loaded custom weapon models
         const gltfLoader = new THREE.GLTFLoader();
@@ -1196,7 +1224,16 @@
             const maxDim = Math.max(size.x, size.y, size.z);
             const target = options.targetSize || options.targetHeight || 1;
             if (maxDim > 0.0001) {
-                root.scale.multiplyScalar(target / maxDim);
+                const desiredScale = (options.targetSize ? options.targetSize : target) / maxDim;
+                root.scale.multiplyScalar(desiredScale);
+            }
+
+            if (options.orientation) {
+                root.rotation.set(
+                    options.orientation.rotationX || 0,
+                    options.orientation.rotationY || 0,
+                    options.orientation.rotationZ || 0
+                );
             }
 
             root.traverse((child) => {
@@ -1248,28 +1285,43 @@
             );
         }
 
+        // KOMENTARZ POD KOD: ta funkcja odpowiada za faktyczne wczytanie modeli do `loadedModels`.
+        // ZMIANA TEJ FUNKCJI: jeśli dodasz klasę lub rodzaj modelu, dopisujesz tutaj warunek loadera dla tego typu.
+        // CO TO DAJE: po przebudowie grafiki enemy dostaną nowy model, zamiast fallbacku proceduralnego.
         function loadGameModels() {
             Object.entries(ENEMY_MODEL_PATHS).forEach(([enemyType, variants]) => {
-                const groundPath = variants.ground;
-                const flyingPath = variants.flying;
+                const groundConfig = variants.ground || { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 };
+                const flyingConfig = variants.flying || { path: '', rotationY: 0, rotationX: 0, rotationZ: 0, scale: 1.0 };
 
-                if (groundPath && groundPath.trim() !== '') {
-                    loadGltfAsset(groundPath, (scene) => {
-                        loadedModels[`${enemyType}Ground`] = prepareGltfModel(scene, {
+                if (groundConfig.path && groundConfig.path.trim() !== '') {
+                    loadGltfAsset(groundConfig.path, (scene) => {
+                        const model = prepareGltfModel(scene, {
                             targetHeight: enemyType.startsWith('boss') ? 3.8 : 2.5,
-                            align: 'ground'
+                            align: 'ground',
+                            orientation: {
+                                rotationY: groundConfig.rotationY || 0,
+                                rotationX: groundConfig.rotationX || 0,
+                                rotationZ: groundConfig.rotationZ || 0
+                            }
                         });
-                        console.log(`[ENEMY MODEL] Załadowano model ziemny ${enemyType}:`, groundPath);
+                        loadedModels[`${enemyType}Ground`] = model;
+                        console.log(`[ENEMY MODEL] Załadowano model ziemny ${enemyType}:`, groundConfig.path);
                     }, `${enemyType} ground`);
                 }
 
-                if (flyingPath && flyingPath.trim() !== '') {
-                    loadGltfAsset(flyingPath, (scene) => {
-                        loadedModels[`${enemyType}Flying`] = prepareGltfModel(scene, {
+                if (flyingConfig.path && flyingConfig.path.trim() !== '') {
+                    loadGltfAsset(flyingConfig.path, (scene) => {
+                        const model = prepareGltfModel(scene, {
                             targetHeight: enemyType === 'kamikaze' ? 1.7 : 2.2,
-                            align: 'flying'
+                            align: 'flying',
+                            orientation: {
+                                rotationY: flyingConfig.rotationY || 0,
+                                rotationX: flyingConfig.rotationX || 0,
+                                rotationZ: flyingConfig.rotationZ || 0
+                            }
                         });
-                        console.log(`[ENEMY MODEL] Załadowano model latający ${enemyType}:`, flyingPath);
+                        loadedModels[`${enemyType}Flying`] = model;
+                        console.log(`[ENEMY MODEL] Załadowano model latający ${enemyType}:`, flyingConfig.path);
                     }, `${enemyType} flying`);
                 }
             });
@@ -1294,8 +1346,12 @@
                 if (path && path.trim() !== '') {
                     loadGltfAsset(path, (scene) => {
                         const size = WEAPON_MODEL_SIZES[weaponId] || 0.22;
-                        const model = prepareGltfModel(scene, { align: 'center', targetSize: size });
-                        model.rotation.y = Math.PI;
+                        const model = prepareGltfModel(scene, {
+                            align: 'center',
+                            targetSize: size,
+                            orientation: WEAPON_MODEL_ORIENTATIONS[weaponId] || { rotationY: Math.PI, rotationX: 0, rotationZ: 0 }
+                        });
+                        // model.rotation.y = Math.PI;
                         loadedWeaponModels[weaponId] = model;
                         console.log(`[WEAPON MODEL] Załadowano: ${weaponId} <- ${path}`);
                     }, `broń:${weaponId}`);
@@ -1968,19 +2024,19 @@
             return Math.hypot(a.x - b.x, a.z - b.z);
         }
 
+        // KOMENTARZ POD KOD: `resolveEnemyModelKey()` decyduje, który model _odpowiada konkretnej klasie enemy_ i temu, czy enemy lata czy chodzi.
+        // ZMIANA TEJ FUNKCJI: zmieniasz warunki if, żeby dla danego typu wróg brał inny model, np. `normalGround` zamiast `kamikazeFlying`.
+        // CO TO DAJE: to rozstrzyga, który GLTF pojawi się na mapie przy danym spawnowaniu wroga.
+        // Ważne: jako jedyny typ, który ma przejść przez wariant lotu z zewnętrznego modelu, ma być `kamikaze`.
         function resolveEnemyModelKey(type, canFly) {
-            const variant = canFly ? 'Flying' : 'Ground';
-            const key = `${type}${variant}`;
-            if (loadedModels[key]) return key;
-
-            if (canFly && loadedModels['kamikazeFlying']) return 'kamikazeFlying';
-            if (!canFly && loadedModels['kamikazeGround']) return 'kamikazeGround';
-
-            if (canFly && loadedModels.flyingEnemy) return 'flyingEnemy';
-            if (!canFly && loadedModels.walkingEnemy) return 'walkingEnemy';
+            if (canFly && type === 'kamikaze' && loadedModels[`${type}Flying`]) return `${type}Flying`;
+            if (!canFly && loadedModels[`${type}Ground`]) return `${type}Ground`;
             return null;
         }
 
+        // KOMENTARZ POD KOD: `createEnemyMesh()` zwraca klon modelu albo fallback proceduralny.
+        // ZMIANA TEJ FUNKCJI: jeśli rozbijesz podział na klasy enemy, tu już wiesz, który model trafia do konkretnego `group`.
+        // CO TO DAJE: potem w `spawnEnemy()` wróg dostaje odpowiedni `group` z właściwym modelem i nie mieszają się rozmiary/kubatura.
         function createEnemyMesh(type, canFly) {
             const modelKey = resolveEnemyModelKey(type, canFly);
             if (modelKey && loadedModels[modelKey]) {
@@ -3529,8 +3585,12 @@
 
             let group;
             let hp = Math.floor(baseHp * (1 + (currentWave - 1) * 0.4));
-            const naturalFlyer = type === 'stalker' || type === 'spitter' || type === 'necromancer' || type === 'kamikaze';
-            const flyingChance = Math.min(0.34, 0.16 + currentWave * 0.01);
+            // KOMENTARZ POD KOD: typ `kamikaze` jest tutaj z góry traktowany jako "latający wybuchający wróg".
+            // ZMIANA TEJ LINIJKI: jeśli usuniesz `type === 'kamikaze'`, wróg nie będzie się pojawiał jako latający na start.
+            // CO TO DAJE: `canFly` wpływa na to, czy wróg będzie używał trybu lotu, hover height i strefy kolizji.
+            // W tej wersji tylko `kamikaze` dostaje taki tryb; reszta wraca do fallbacku `createProceduralEnemyMesh()`.
+            const naturalFlyer = type === 'kamikaze';
+            const flyingChance = 0;
             const canFly = naturalFlyer || (type === 'kamikaze') || Math.random() < flyingChance;
             const hoverHeight = getEnemyHoverHeight(scale);
 
