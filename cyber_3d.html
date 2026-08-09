@@ -1068,56 +1068,56 @@
         // W praktyce wstawiasz tu ścieżki, jeśli masz pliki GLTF; gdy ich nie ma, na wejściu wyświetla się fallback proceduralny, ale slot nie znika.
         const ENEMY_MODEL_PATHS = {
             normal: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 },
-                flying: { path: 'models/enemy/fly_model.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 }
+                ground: { path: 'models/enemy/zombie.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: 'models/enemy/fly_model.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             fast: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 },
-                flying: { path: 'models/enemy/fly_model.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 }
+                ground: { path: 'models/enemy/zombie.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: 'models/enemy/fly_model.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             spitter: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 },
-                flying: { path: 'models/enemy/fly_model.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 }
+                ground: { path: 'models/enemy/zombie.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: 'models/enemy/fly_model.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             shield: {
-                ground: { path: '', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 },
-                flying: { path: '', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 }
+                ground: { path: 'models/enemy/zombie.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: 'models/enemy/fly_model.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             buffer: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 },
-                flying: { path: 'models/enemy/fly_model.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 }
+                ground: { path: 'models/enemy/zombie.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: 'models/enemy/fly_model.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             kamikaze: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 },
-                flying: { path: 'models/enemy/fly_model.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 }
+                ground: { path: 'models/enemy/zombie.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: 'models/enemy/fly_model.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             dodger: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 },
-                flying: { path: 'models/enemy/fly_model.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 }
+                ground: { path: 'models/enemy/zombie.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: 'models/enemy/fly_model.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             bruiser: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 },
-                flying: { path: 'models/enemy/fly_model.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 }
+                ground: { path: 'models/enemy/zombie.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: 'models/enemy/fly_model.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             stalker: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 },
-                flying: { path: 'models/enemy/fly_model.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 }
+                ground: { path: 'models/enemy/zombie.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: 'models/enemy/fly_model.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             necromancer: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 },
-                flying: { path: 'models/enemy/fly_model.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 }
+                ground: { path: 'models/enemy/zombie.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: 'models/enemy/fly_model.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             bossTitan: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 },
-                flying: { path: 'models/enemy/fly_model.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 }
+                ground: { path: 'models/enemy/zombie.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: 'models/enemy/fly_model.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             bossBehemoth: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 },
-                flying: { path: 'models/enemy/fly_model.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 }
+                ground: { path: 'models/enemy/zombie.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: 'models/enemy/fly_model.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             bossPlasma: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 },
-                flying: { path: 'models/enemy/fly_model.glb', rotationY: 0, rotationX: 0, rotationZ: 180, scale: 1.0 }
+                ground: { path: 'models/enemy/zombie.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: 'models/enemy/fly_model.glb', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 }
             }
         };
 
@@ -1160,14 +1160,14 @@
         // kontrola rozmiaru jest jednolita i nie rozciąga widoku na wielkie obiekty.
         const WEAPON_MODEL_SIZES = {
             pistol: 0.18,
-            rifle: 0.45,
-            shotgun: 0.45,
+            rifle: 0.25,
+            shotgun: 0.28,
             smg: 0.26,
             burst: 0.28,
             sniper: 0.30,
             crossbow: 0.28,
             wand: 0.24,
-            ice_staff: 1.0,
+            ice_staff: 0.28,
             plasma: 0.30,
             railgun: 0.34,
             grenade: 0.24,
@@ -1180,15 +1180,15 @@
         // ZMIANA TEJ LICZBY: zmieniasz yaw/pitch dla konkretnej broni, żeby odpowiednio ustawić w poziomie i pionie.
         // CO TO DAJE: model będzie obrócony względem lokalnego osi; bez tego GLTF może być źle ustawiony do pierwszej osoby.
         const WEAPON_MODEL_ORIENTATIONS = {
-            pistol: { rotationY: Math.PI, rotationX: 0, rotationZ: 180 },
-            rifle: { rotationY: Math.PI, rotationX: 0, rotationZ: 180 },
-            shotgun: { rotationY: Math.PI, rotationX: 0, rotationZ: 180},
-            smg: { rotationY: Math.PI, rotationX: 0, rotationZ: 180 },
+            pistol: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
+            rifle: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
+            shotgun: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
+            smg: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
             burst: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
             sniper: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
             crossbow: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
             wand: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
-            ice_staff: { rotationY: Math.PI, rotationX: 0, rotationZ: 180 },
+            ice_staff: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
             plasma: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
             railgun: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
             grenade: { rotationY: Math.PI, rotationX: 0, rotationZ: 0 },
@@ -2046,7 +2046,6 @@
                 const clone = loadedModels[modelKey].clone(true);
                 clone.userData.usesExternalModel = true;
                 clone.userData.modelKey = modelKey;
-                clone.rotation.y = 0;
                 return clone;
             }
             const mesh = createProceduralEnemyMesh(type);
