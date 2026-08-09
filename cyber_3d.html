@@ -2953,7 +2953,7 @@
 
             if (weaponRig) {
                 weaponRig.position.set(0.28 + recoilOffset.x, -0.28 + recoilOffset.y, -0.45 + recoilOffset.z);
-                weaponRig.rotation.set(recoilRot.x, recoilRot.y, recoilRot.z);
+                weaponRig.rotation.set(recoilRot.x, Math.PI, recoilRot.z);
             }
 
             if (muzzleFlashMesh && muzzleFlashMesh.material.opacity > 0) {
@@ -4551,15 +4551,8 @@
                         }
                     }
 
-                    const faceTarget = e.userData.type === 'shield' || (e.userData.turnSpeed && e.userData.turnSpeed < 90);
                     const targetAngle = getEnemyFacingAngle(e.position.x, e.position.z, camera.position.x, camera.position.z);
-                    if (faceTarget) {
-                        let diff = normalizeAngle(targetAngle - e.rotation.y);
-                        const maxTurn = (e.userData.turnSpeed || 1.35) * enemyDelta;
-                        e.rotation.y += Math.max(-maxTurn, Math.min(maxTurn, diff * 0.75));
-                    } else {
-                        e.rotation.y = targetAngle;
-                    }
+                    e.rotation.y = targetAngle;
 
                     if (e.userData.type === 'necromancer') {
                         if (dist < 12.0) {
