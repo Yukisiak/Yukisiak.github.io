@@ -4140,39 +4140,6 @@
             )).normalize();
         }
 
-        let decals = [];
-        const MAX_DECALS = 10;
-        const sharedDecalGeo = new THREE.PlaneGeometry(0.3, 0.3);
-        const sharedDecalMat = new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.75, depthWrite: false });
-
-        function createImpactSparks(pos, colorHex = 0xffff00) {
-            if (particles.length > 30) return; // Cap max active particles
-            for (let i = 0; i < 2; i++) {
-                const pMat = new THREE.MeshBasicMaterial({ color: colorHex });
-                const pMesh = new THREE.Mesh(new THREE.SphereGeometry(0.04, 4, 4), pMat);
-                pMesh.position.copy(pos);
-                const vel = new THREE.Vector3(
-                    (Math.random() - 0.5) * 6,
-                    (Math.random() * 3) + 1,
-                    (Math.random() - 0.5) * 6
-                );
-                particles.push({ mesh: pMesh, velocity: vel, life: 0.2, maxLife: 0.2 });
-                scene.add(pMesh);
-            }
-        }
-
-        function createImpactDecal(pos, normalVec = new THREE.Vector3(0, 1, 0)) {
-            if (decals.length >= MAX_DECALS) {
-                const old = decals.shift();
-                scene.remove(old);
-            }
-            const decal = new THREE.Mesh(sharedDecalGeo, sharedDecalMat);
-            decal.position.copy(pos).add(normalVec.clone().multiplyScalar(0.015));
-            decal.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normalVec);
-            scene.add(decal);
-            decals.push(decal);
-        }
-
         function createPlayerBullet(w, spawnPos, direction, options = {}) {
             const size = options.size || (w.id === 'boomerang' ? 0.18 : 0.08);
             const color = w.color || '#00ffff';
@@ -4181,12 +4148,6 @@
                 new THREE.MeshBasicMaterial({ color: color })
             );
             bullet.position.copy(spawnPos);
-
-            // Add dynamic light ONLY to heavy special weapons (plasma, rockets, wand) to prevent lag
-            if (w.id === 'plasma' || w.id === 'wand' || w.type === 'explosive') {
-                const bLight = new THREE.PointLight(color, 1.8, 5.0);
-                bullet.add(bLight);
-            }
 
             bullet.userData = {
                 velocity: direction.clone().multiplyScalar(options.speed || w.speed),
@@ -5159,8 +5120,6 @@
                 // Bullets pass over ramps — use bullet's Y position as feetY so ramps don't block aerial shots
                 const bulletFeetY = Math.max(0, b.position.y - 0.1);
                 if (isObstacleCollision(b.position.x, b.position.z, 0.2, bulletFeetY)) {
-                    createImpactSparks(b.position, 0xffff00);
-                    createImpactDecal(b.position);
                     scene.remove(b);
                     bullets.splice(i, 1);
                     continue;
