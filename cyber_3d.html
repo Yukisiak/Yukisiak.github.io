@@ -2856,11 +2856,14 @@
                     if (x >= 6 && x <= 9 && y >= 6 && y <= 9) continue;
 
                     const rand = Math.random();
-                    if (rand < 0.15) mapGrid[y][x] = 1;
-                    else if (rand < 0.22) mapGrid[y][x] = 3;
-                    else if (rand < 0.28) mapGrid[y][x] = 4;
-                    else if (rand < 0.33) mapGrid[y][x] = 5;
-                    else if (rand < 0.39) mapGrid[y][x] = 6;
+                    if (rand < 0.14) mapGrid[y][x] = 1;      // Wall block
+                    else if (rand < 0.20) mapGrid[y][x] = 3; // Void hole
+                    else if (rand < 0.25) mapGrid[y][x] = 4; // Ramp
+                    else if (rand < 0.30) mapGrid[y][x] = 5; // Barrel
+                    else if (rand < 0.35) mapGrid[y][x] = 6; // Oil slick
+                    else if (rand < 0.40) mapGrid[y][x] = 7; // Neon Pillar
+                    else if (rand < 0.45) mapGrid[y][x] = 8; // Tech Crate
+                    else if (rand < 0.48) mapGrid[y][x] = 9; // Generator Core
                 }
             }
 
@@ -2911,9 +2914,59 @@
                         spawnBarrel(posX, posZ);
                     } else if (type === 6) {
                         spawnOilSlick(posX, posZ);
+                    } else if (type === 7) {
+                        spawnNeonPillar(posX, posZ);
+                    } else if (type === 8) {
+                        spawnTechCrate(posX, posZ);
+                    } else if (type === 9) {
+                        spawnGeneratorCore(posX, posZ);
                     }
                 }
             }
+        }
+
+        function spawnNeonPillar(x, z) {
+            const group = new THREE.Group();
+            const colMat = new THREE.MeshStandardMaterial({ color: 0x111622, metalness: 0.8, roughness: 0.2 });
+            const column = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 5.5, 8), colMat);
+            column.position.y = 2.75;
+            group.add(column);
+
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+            const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.06, 8, 16), ringMat);
+            ring1.rotation.x = Math.PI / 2; ring1.position.y = 1.8;
+            const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.06, 8, 16), ringMat);
+            ring2.rotation.x = Math.PI / 2; ring2.position.y = 3.6;
+            group.add(ring1); group.add(ring2);
+
+            group.position.set(x, 0, z);
+            mapObjectsGroup.add(group);
+            obstacles.push(column);
+        }
+
+        function spawnTechCrate(x, z) {
+            const mat = new THREE.MeshStandardMaterial({ color: 0x222a38, metalness: 0.6, roughness: 0.3 });
+            const seamMat = new THREE.MeshBasicMaterial({ color: 0xffa000 });
+            const box = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.8, 2.2), mat);
+            box.position.set(x, 0.9, z);
+            const seam = new THREE.Mesh(new THREE.BoxGeometry(2.25, 0.1, 2.25), seamMat);
+            seam.position.set(x, 0.9, z);
+            mapObjectsGroup.add(box); mapObjectsGroup.add(seam);
+            obstacles.push(box);
+        }
+
+        function spawnGeneratorCore(x, z) {
+            const group = new THREE.Group();
+            const baseMat = new THREE.MeshStandardMaterial({ color: 0x1a1a24, metalness: 0.9, roughness: 0.1 });
+            const coreMat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+            const base = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.4, 1.2, 12), baseMat);
+            base.position.y = 0.6;
+            const orb = new THREE.Mesh(new THREE.SphereGeometry(0.7, 12, 12), coreMat);
+            orb.position.y = 1.8;
+            group.add(base); group.add(orb);
+            group.position.set(x, 0, z);
+            mapObjectsGroup.add(group);
+            obstacles.push(base);
         }
 
         function spawnHoleFence(posX, posZ) {
@@ -3076,16 +3129,6 @@
             weaponRig.position.set(0.28, -0.68, -0.45);
             camera.add(weaponRig);
             scene.add(camera);
-
-            muzzleFlashLight = new THREE.PointLight(0x00ffff, 0, 8);
-            muzzleFlashLight.position.set(0, 0.05, -0.6);
-            weaponRig.add(muzzleFlashLight);
-
-            const flashGeo = new THREE.OctahedronGeometry(0.12, 0);
-            const flashMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
-            muzzleFlashMesh = new THREE.Mesh(flashGeo, flashMat);
-            muzzleFlashMesh.position.set(0, 0.05, -0.6);
-            weaponRig.add(muzzleFlashMesh);
         }
 
         function applyRecoil(kickZ = 0.08, kickY = 0.03, pitchX = 0.12) {
@@ -3103,13 +3146,6 @@
             if (weaponRig) {
                 weaponRig.position.set(0.28 + recoilOffset.x, -0.68 + recoilOffset.y, -0.45 + recoilOffset.z);
                 weaponRig.rotation.set(recoilRot.x, Math.PI, recoilRot.z);
-            }
-
-            if (muzzleFlashMesh && muzzleFlashMesh.material.opacity > 0) {
-                muzzleFlashMesh.material.opacity = Math.max(0, muzzleFlashMesh.material.opacity - 20 * delta);
-            }
-            if (muzzleFlashLight && muzzleFlashLight.intensity > 0) {
-                muzzleFlashLight.intensity = Math.max(0, muzzleFlashLight.intensity - 50 * delta);
             }
         }
 
@@ -4404,8 +4440,6 @@
             cyberAudio.playWeaponSound(w.type);
 
             applyRecoil(0.08, 0.03, 0.12);
-            if (muzzleFlashMesh) muzzleFlashMesh.material.opacity = 0.95;
-            if (muzzleFlashLight) muzzleFlashLight.intensity = 4.5;
 
             const targetPoint = getAimTargetPoint(100);
             const muzzleOffset = new THREE.Vector3(0.25, -0.22, -0.5).applyQuaternion(camera.quaternion);
