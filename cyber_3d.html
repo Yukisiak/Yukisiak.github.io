@@ -3267,7 +3267,8 @@
 
             raycaster = new THREE.Raycaster();
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.toneMapping = THREE.ReinhardToneMapping;
             renderer.toneMappingExposure = 1.1;
@@ -3278,9 +3279,12 @@
                 const renderPass = new THREE.RenderPass(scene, camera);
                 composer.addPass(renderPass);
 
+                // Bloom resolution set to half screen for massive performance boost
+                const bloomWidth = Math.floor(window.innerWidth / 2);
+                const bloomHeight = Math.floor(window.innerHeight / 2);
                 bloomPass = new THREE.UnrealBloomPass(
-                    new THREE.Vector2(window.innerWidth, window.innerHeight),
-                    1.1, 0.3, 0.75
+                    new THREE.Vector2(bloomWidth, bloomHeight),
+                    0.8, 0.25, 0.82
                 );
                 composer.addPass(bloomPass);
             } catch (e) {
@@ -3783,7 +3787,12 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-            if (composer) composer.setSize(window.innerWidth, window.innerHeight);
+            if (composer) {
+                composer.setSize(window.innerWidth, window.innerHeight);
+                if (bloomPass) {
+                    bloomPass.resolution.set(Math.floor(window.innerWidth / 2), Math.floor(window.innerHeight / 2));
+                }
+            }
         }
 
         // Losuje typ wroga i dodaje go na mapę (w tym wroga z tarczą i kamikaze)
@@ -4092,43 +4101,53 @@
             )).normalize();
         }
 
+        let decals = [];
+        const MAX_DECALS = 10;
+        const sharedDecalGeo = new THREE.PlaneGeometry(0.3, 0.3);
+        const sharedDecalMat = new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.75, depthWrite: false });
+
         function createImpactSparks(pos, colorHex = 0xffff00) {
-            for (let i = 0; i < 7; i++) {
+            if (particles.length > 30) return; // Cap max active particles
+            for (let i = 0; i < 2; i++) {
                 const pMat = new THREE.MeshBasicMaterial({ color: colorHex });
-                const pMesh = new THREE.Mesh(new THREE.SphereGeometry(0.05, 4, 4), pMat);
+                const pMesh = new THREE.Mesh(new THREE.SphereGeometry(0.04, 4, 4), pMat);
                 pMesh.position.copy(pos);
                 const vel = new THREE.Vector3(
-                    (Math.random() - 0.5) * 8,
-                    (Math.random() * 5) + 1,
-                    (Math.random() - 0.5) * 8
+                    (Math.random() - 0.5) * 6,
+                    (Math.random() * 3) + 1,
+                    (Math.random() - 0.5) * 6
                 );
-                particles.push({ mesh: pMesh, velocity: vel, life: 0.25, maxLife: 0.25 });
+                particles.push({ mesh: pMesh, velocity: vel, life: 0.2, maxLife: 0.2 });
                 scene.add(pMesh);
             }
         }
 
         function createImpactDecal(pos, normalVec = new THREE.Vector3(0, 1, 0)) {
-            const geo = new THREE.PlaneGeometry(0.3, 0.3);
-            const mat = new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.8, depthWrite: false });
-            const decal = new THREE.Mesh(geo, mat);
+            if (decals.length >= MAX_DECALS) {
+                const old = decals.shift();
+                scene.remove(old);
+            }
+            const decal = new THREE.Mesh(sharedDecalGeo, sharedDecalMat);
             decal.position.copy(pos).add(normalVec.clone().multiplyScalar(0.015));
             decal.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normalVec);
             scene.add(decal);
-            setTimeout(() => { scene.remove(decal); }, 6000);
+            decals.push(decal);
         }
 
         function createPlayerBullet(w, spawnPos, direction, options = {}) {
             const size = options.size || (w.id === 'boomerang' ? 0.18 : 0.08);
             const color = w.color || '#00ffff';
             const bullet = new THREE.Mesh(
-                new THREE.SphereGeometry(size, 8, 8),
+                new THREE.SphereGeometry(size, 6, 6),
                 new THREE.MeshBasicMaterial({ color: color })
             );
             bullet.position.copy(spawnPos);
 
-            // Dynamic Point Light attached to projectile
-            const bLight = new THREE.PointLight(color, 2.2, 6.5);
-            bullet.add(bLight);
+            // Add dynamic light ONLY to heavy special weapons (plasma, rockets, wand) to prevent lag
+            if (w.id === 'plasma' || w.id === 'wand' || w.type === 'explosive') {
+                const bLight = new THREE.PointLight(color, 1.8, 5.0);
+                bullet.add(bLight);
+            }
 
             bullet.userData = {
                 velocity: direction.clone().multiplyScalar(options.speed || w.speed),
