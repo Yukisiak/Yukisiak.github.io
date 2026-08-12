@@ -512,6 +512,7 @@
             box-sizing: border-box;
             font-family: 'Courier New', monospace;
         }
+
         #dev-console-output {
             flex: 1;
             overflow-y: auto;
@@ -523,16 +524,19 @@
             padding: 6px;
             border-radius: 4px;
         }
+
         #dev-console-input-row {
             display: flex;
             align-items: center;
         }
+
         #dev-console-prompt {
             color: #ff0055;
             font-weight: bold;
             margin-right: 8px;
             font-size: 1.1rem;
         }
+
         #dev-console-input {
             flex: 1;
             background: rgba(0, 0, 0, 0.8);
@@ -632,11 +636,13 @@
         <p style="color:#fff; font-size: 1.2rem;">SCORE POINTS: <span id="shop-score" style="color:#0f0;">0</span></p>
         <p id="shop-subtitle" class="small-readout"></p>
         <div class="shop-grid" id="shop-offers"></div>
-        <button class="menu-btn" id="rerollShopBtn" style="margin:10px 0; background:#ffaa00; color:#000;">REROLL SHOP (300 SCORE)</button>
+        <button class="menu-btn" id="rerollShopBtn" style="margin:10px 0; background:#ffaa00; color:#000;">REROLL SHOP
+            (300 SCORE)</button>
         <h2 style="color:#ffaa00; margin:12px 0 4px;">WEAPON MARKET</h2>
         <div class="shop-grid" id="sell-offers"></div>
 
-        <button class="menu-btn" id="closeShopBtn" style="margin-top:20px; background:#00ffaa; color:#000;">NEXT WAVE</button>
+        <button class="menu-btn" id="closeShopBtn" style="margin-top:20px; background:#00ffaa; color:#000;">NEXT
+            WAVE</button>
     </div>
 
     <div id="death" style="display:none;">
@@ -1126,11 +1132,11 @@
         // W praktyce wstawiasz tu ścieżki, jeśli masz pliki GLTF; gdy ich nie ma, na wejściu wyświetla się fallback proceduralny, ale slot nie znika.
         const ENEMY_MODEL_PATHS = {
             normal: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                ground: { path: 'models/enemy/free_fnaf.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
                 flying: { path: 'models/enemy/fly_model.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             fast: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                ground: { path: 'models/enemy/spider.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
                 flying: { path: 'models/enemy/fly_model.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             spitter: {
@@ -1146,15 +1152,15 @@
                 flying: { path: 'models/enemy/fly_model.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             kamikaze: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
-                flying: { path: 'models/enemy/fly_model.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 }
+                ground: { path: 'models/enemy/mush.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                flying: { path: 'models/enemy/mechanical_wasp.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             dodger: {
                 ground: { path: 'models/enemy/zombie.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
                 flying: { path: 'models/enemy/fly_model.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             bruiser: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                ground: { path: 'models/enemy/robot.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
                 flying: { path: 'models/enemy/fly_model.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             stalker: {
@@ -1231,7 +1237,7 @@
             grenade: 1.75,
             flame: 0.30,
             laser: 0.34,
-            boomerang: 0.24
+            boomerang: 1.75
         };
 
         // Dodatkowa konfiguracja orientacji modelu broni w przestrzeni kamery.
