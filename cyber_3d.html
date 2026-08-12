@@ -4048,6 +4048,10 @@
                 document.getElementById('boss-hp-bar').style.width = Math.max(0, (e.userData.hp / e.userData.maxHp) * 100) + '%';
             }
             if (e.userData.hpBar) {
+                const ratio = Math.max(0, e.userData.hp / e.userData.maxHp);
+                if (e.userData.lastRenderedRatio === ratio) return; // Skip redundant canvas updates
+                e.userData.lastRenderedRatio = ratio;
+
                 const canvas = e.userData.hpBar.material.map.image;
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, 128, 16);
@@ -4057,7 +4061,6 @@
                 ctx.lineWidth = 2;
                 ctx.strokeRect(1, 1, 126, 14);
 
-                const ratio = Math.max(0, e.userData.hp / e.userData.maxHp);
                 ctx.fillStyle = ratio > 0.5 ? '#00ff66' : (ratio > 0.25 ? '#ffff00' : '#ff0044');
                 ctx.fillRect(2, 2, Math.floor(124 * ratio), 12);
 
@@ -4228,11 +4231,26 @@
             });
         }
 
+        const _tempAB = new THREE.Vector3();
+        const _tempPA = new THREE.Vector3();
+        const _tempClosest = new THREE.Vector3();
+
+        function distancePointToSegment(point, a, b) {
+            _tempAB.subVectors(b, a);
+            const lenSq = _tempAB.lengthSq();
+            if (lenSq === 0) return point.distanceTo(a);
+            _tempPA.subVectors(point, a);
+            const t = Math.max(0, Math.min(1, _tempPA.dot(_tempAB) / lenSq));
+            _tempClosest.copy(a).addScaledVector(_tempAB, t);
+            return point.distanceTo(_tempClosest);
+        }
+
         function getAimTargetPoint(maxDistance = 100) {
             raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            const targets = [...walls, ...platforms, ...barrels, ...enemies];
+            // Lightweight static target list — avoids expensive recursive GLTF enemy hierarchy traversal
+            const targets = [...walls, ...platforms, ...barrels];
             if (floorMesh) targets.push(floorMesh);
-            const intersects = raycaster.intersectObjects(targets, true);
+            const intersects = raycaster.intersectObjects(targets, false);
             for (let hit of intersects) {
                 if (hit.object === floorMesh && isVoid(hit.point.x, hit.point.z)) continue;
                 return hit.point;
@@ -4599,9 +4617,9 @@
                     let bestAngle = null;
                     let bestDot = -Infinity;
                     const baseAngle = Math.atan2(desiredDir.x, desiredDir.z);
+                    const offsets = [Math.PI / 4, -Math.PI / 4, Math.PI / 2, -Math.PI / 2];
 
-                    for (let i = 1; i < 12; i++) {
-                        const angleOffset = (i % 2 === 1 ? 1 : -1) * Math.ceil(i / 2) * (Math.PI / 6);
+                    for (let angleOffset of offsets) {
                         const testAngle = baseAngle + angleOffset;
                         const testX = e.position.x + Math.sin(testAngle) * speed;
                         const testZ = e.position.z + Math.cos(testAngle) * speed;
