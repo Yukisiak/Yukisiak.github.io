@@ -3160,8 +3160,8 @@
                     toEnemy.normalize();
                     const dot = camDir.dot(toEnemy);
                     if (dot > 0.4) {
-                        // Melee deals 25% of target's max HP (minimum 18 damage)
-                        const damage = Math.max(18, Math.floor(e.userData.maxHp * 0.25));
+                        // Melee deals 35 flat damage — significant but won't one-shot most enemies
+                        const damage = 35;
                         e.userData.hp -= damage;
                         e.position.add(camDir.clone().multiplyScalar(3.5));
                         e.userData.burnTimer = 2.0;
@@ -3291,6 +3291,13 @@
                     performDash();
                     cyberAudio.playDash();
                 }
+
+                if ((k === 'r') && document.pointerLockElement && !isMountedCannon) {
+                    const w = currentWeaponData();
+                    if (w && w.mag && !w.reloading && w.currentMag < getWeaponMag(w) && w.ammo > 0) {
+                        startWeaponReload(w);
+                    }
+                }
             };
 
             const rerollBtn = document.getElementById('rerollShopBtn');
@@ -3299,11 +3306,14 @@
                     const cost = 300;
                     if (stats.score >= cost) {
                         stats.score -= cost;
-                        document.getElementById('score').innerText = stats.score;
-                        document.getElementById('shop-score').innerText = stats.score;
                         generateShopOffers();
+                        updateShopUI();
                     } else {
-                        alert('NOT ENOUGH SCORE! NEED 300 SCORE TO REROLL.');
+                        const btn = document.getElementById('rerollShopBtn');
+                        const orig = btn.textContent;
+                        btn.textContent = 'NEED 300 SCORE!';
+                        btn.style.background = '#ff4444';
+                        setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 1500);
                     }
                 };
             }
@@ -4146,17 +4156,20 @@
         function isBulletBlockedByShield(e, segmentStart) {
             if (!e.userData.hasShield) return false;
 
-            const enemyForward = new THREE.Vector3(0, 0, 1).applyQuaternion(e.quaternion);
-            enemyForward.y = 0;
-            if (enemyForward.lengthSq() < 0.0001) return true;
+            // enemyForward = the direction the enemy (and shield) is FACING
+            // Shield blocks bullets coming from the FRONT (where the shield faces)
+            // i.e. the shooter is in the same direction as enemyForward
+            const enemyForward = new THREE.Vector3(Math.sin(e.rotation.y), 0, Math.cos(e.rotation.y));
             enemyForward.normalize();
 
+            // toShooter = direction from enemy to bullet origin (player position)
             const toShooter = new THREE.Vector3().subVectors(segmentStart, e.position);
             toShooter.y = 0;
-            if (toShooter.lengthSq() < 0.0001) return true;
+            if (toShooter.lengthSq() < 0.0001) return false;
             toShooter.normalize();
 
-            return enemyForward.dot(toShooter) > 0.35;
+            // Block if shooter is in the forward arc (shield side) — dot > 0.3 means within ~72 degree cone
+            return enemyForward.dot(toShooter) > 0.3;
         }
 
         function getEnemyHitCenter(e) {
@@ -4271,14 +4284,19 @@
                 if (x > w.position.x - CELL / 2 - radius && x < w.position.x + CELL / 2 + radius &&
                     z > w.position.z - CELL / 2 - radius && z < w.position.z + CELL / 2 + radius) return true;
             }
-            // Prevent walking onto ramps from sides/back if feet height is significantly lower than ramp height
+            // Ramps: only block entry from the 3 non-walkup sides (left, right, high end).
+            // The low end (front, where relZ ≈ 0 → rampH ≈ 0) is open for walking up.
+            // We block if the ramp height at the point of contact is taller than feetY + step threshold,
+            // AND the contact is not on the low-Z (walkup) edge of the ramp.
             for (let p of platforms) {
                 const halfCell = CELL / 2;
                 if (x > p.position.x - halfCell - radius && x < p.position.x + halfCell + radius &&
                     z > p.position.z - halfCell - radius && z < p.position.z + halfCell + radius) {
-                    const relZ = Math.max(0, Math.min(1, 1 - (z - (p.position.z - halfCell)) / CELL));
-                    const rampH = relZ * 1.8;
-                    if (rampH - feetY > 0.45) return true;
+                    // relZ: 0 = front/low end (walkable entry), 1 = back/high end
+                    const relZ = Math.max(0, Math.min(1, (z - (p.position.z - halfCell)) / CELL));
+                    const rampH = (1 - relZ) * 1.8; // height at this Z position on the ramp
+                    // Only block if we'd need to step up more than 0.5m and we're not near the low entry edge
+                    if (rampH - feetY > 0.5 && relZ > 0.08) return true;
                 }
             }
             return false;
@@ -4341,17 +4359,14 @@
                 isVoid(x, z);
         }
 
-        function getPlatformHeightAt(x, z, feetY = 0) {
+        function getPlatformHeightAt(x, z) {
             for (let p of platforms) {
                 const halfCell = CELL / 2;
                 if (x > p.position.x - halfCell && x < p.position.x + halfCell &&
                     z > p.position.z - halfCell && z < p.position.z + halfCell) {
-
-                    const relZ = (z - (p.position.z - halfCell)) / CELL;
-                    const clampedZ = Math.max(0, Math.min(1, 1 - relZ));
-                    const rampH = clampedZ * 1.8;
-                    if (rampH - feetY > 0.45) return 0;
-                    return rampH;
+                    // relZ: 0=front/low, 1=back/high
+                    const relZ = Math.max(0, Math.min(1, (z - (p.position.z - halfCell)) / CELL));
+                    return (1 - relZ) * 1.8;
                 }
             }
             return 0;
@@ -4654,9 +4669,10 @@
 
                     const nextX = camera.position.x + dx;
                     const nextZ = camera.position.z + dz;
+                    const feetY = camera.position.y - 1.7;
 
-                    if (!isObstacleCollision(nextX, camera.position.z) && !isBarrelCollision(nextX, camera.position.z, 0.65, camera.position.y) && !checkFenceCollision(nextX, camera.position.z, 0.6, camera.position.y)) camera.position.x = nextX;
-                    if (!isObstacleCollision(camera.position.x, nextZ) && !isBarrelCollision(camera.position.x, nextZ, 0.65, camera.position.y) && !checkFenceCollision(camera.position.x, nextZ, 0.6, camera.position.y)) camera.position.z = nextZ;
+                    if (!isObstacleCollision(nextX, camera.position.z, 0.8, feetY) && !isBarrelCollision(nextX, camera.position.z, 0.65, camera.position.y) && !checkFenceCollision(nextX, camera.position.z, 0.6, camera.position.y)) camera.position.x = nextX;
+                    if (!isObstacleCollision(camera.position.x, nextZ, 0.8, feetY) && !isBarrelCollision(camera.position.x, nextZ, 0.65, camera.position.y) && !checkFenceCollision(camera.position.x, nextZ, 0.6, camera.position.y)) camera.position.z = nextZ;
                 } else if (cannonGroup) {
                     playerVelY = 0;
                     isGrounded = true;
@@ -4760,7 +4776,18 @@
                     }
 
                     const targetAngle = getEnemyFacingAngle(e.position.x, e.position.z, camera.position.x, camera.position.z);
-                    e.rotation.y = targetAngle;
+                    if (e.userData.turnSpeed && e.userData.turnSpeed < 50) {
+                        // Smooth turn at limited speed (shield enemy)
+                        const cur = e.rotation.y;
+                        let diff = targetAngle - cur;
+                        // Normalize to [-PI, PI]
+                        while (diff > Math.PI) diff -= Math.PI * 2;
+                        while (diff < -Math.PI) diff += Math.PI * 2;
+                        const maxTurn = e.userData.turnSpeed * enemyDelta;
+                        e.rotation.y = cur + Math.sign(diff) * Math.min(Math.abs(diff), maxTurn);
+                    } else {
+                        e.rotation.y = targetAngle;
+                    }
 
                     if (e.userData.type === 'necromancer') {
                         if (dist < 12.0) {
@@ -4861,6 +4888,14 @@
                             e.userData.lastAttack = now;
                         }
 
+                    } else if (e.userData.type === 'shield') {
+                        // Shield enemy always moves toward player (forward = shield faces player)
+                        moveEnemySmart(e, camera.position, enemyDelta, isLateWavePhase);
+                        const contactRange = 2.1;
+                        if (horizDist < contactRange && heightDiff < 2.6) {
+                            const damageMult = (selectedCharacterId === 'breacher' ? 0.75 : 1.0);
+                            damagePlayer(25 * e.userData.damageMult * damageMult * enemyDelta);
+                        }
                     } else {
                         moveEnemySmart(e, camera.position, enemyDelta, isLateWavePhase);
                         const contactRange = e.userData.type === 'bruiser' ? 2.35 : (e.userData.type === 'fast' || e.userData.type === 'dodger' ? 1.95 : 2.1);
