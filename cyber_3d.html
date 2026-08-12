@@ -494,30 +494,80 @@
         #death>p:not(#death-reason) {
             display: none;
         }
+
+        /* --- DEV CONSOLE STYLES --- */
+        #dev-console {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 190px;
+            background: rgba(5, 12, 20, 0.95);
+            border-top: 2px solid #00ffaa;
+            box-shadow: 0 0 20px rgba(0, 255, 170, 0.5);
+            z-index: 10000;
+            display: none;
+            flex-direction: column;
+            padding: 10px;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+        }
+        #dev-console-output {
+            flex: 1;
+            overflow-y: auto;
+            color: #00ffaa;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            white-space: pre-wrap;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 6px;
+            border-radius: 4px;
+        }
+        #dev-console-input-row {
+            display: flex;
+            align-items: center;
+        }
+        #dev-console-prompt {
+            color: #ff0055;
+            font-weight: bold;
+            margin-right: 8px;
+            font-size: 1.1rem;
+        }
+        #dev-console-input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ffaa;
+            color: #fff;
+            padding: 8px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            outline: none;
+            border-radius: 3px;
+        }
     </style>
 </head>
 
 <body>
     <!-- =====================================================================
-         STRUKTURA HTML — warstwy interfejsu gry (HUD, menu, sklep, śmierć)
+         HTML STRUCTURE — Game interface layers (HUD, menu, shop, death)
          ===================================================================== -->
 
-    <!-- Czerwony błysk ekranu po otrzymaniu obrażeń -->
+    <!-- Red screen flash when receiving damage -->
     <div id="damage-flash"></div>
-    <!-- Czerwona poświata przy niskim HP (< 30%) -->
+    <!-- Red vignette on low HP (< 30%) -->
     <div id="low-hp-vignette"></div>
 
     <div id="wave-banner">
-        FALA <span id="wave-num">1</span>
-        <div id="biome-tag">BIOM: CYBER-CITY</div>
+        WAVE <span id="wave-num">1</span>
+        <div id="biome-tag">BIOME: CYBER-CITY</div>
     </div>
 
     <div id="enemy-compass">
         <span id="enemy-compass-arrow">▲</span>
-        <span id="enemy-compass-text">NAJBLIŻSZY: 0m</span>
+        <span id="enemy-compass-text">NEAREST: 0m</span>
     </div>
 
-    <div id="cannon-alert">⚠️ WYKRYTO MOBILNE DZIAŁKO NA MAPIE! ⚠️</div>
+    <div id="cannon-alert">⚠️ MOUNTED CANNON DETECTED ON MAP! ⚠️</div>
 
     <div id="boss-hud">
         <div id="boss-name">BOSS NAME</div>
@@ -527,7 +577,7 @@
     </div>
 
     <div id="wave-notice"></div>
-    <div id="interaction-prompt">[E] WEJDŹ DO DZIAŁKA</div>
+    <div id="interaction-prompt">[E] MOUNT CANNON</div>
 
     <div id="overlay">
         <h1 style="color:#ff0055; font-size: 3.2rem; text-shadow:0 0 20px #ff0055;">CYBER DOOM</h1>
@@ -535,42 +585,42 @@
             <div id="selected-character-readout" class="small-readout"></div>
             <p
                 style="color:#00ffaa; font-size: 1.05rem; background:rgba(0,0,0,0.5); padding:10px; border-radius:4px; border:1px solid #00ffaa;">
-                WASD - Ruch | SPACJA - Skok | CTRL/C - Slide | SHIFT - Dash<br>
-                1/2 - Bronie | LPM - Strzał | Q - Umiejętność Postaci | F/V - Miecz Cyber-Blade<br>
-                E - Działko Stacjonarne | ESC - Pauza
+                WASD - Move | SPACE - Jump | CTRL/C - Slide | SHIFT - Dash<br>
+                1/2 - Select Weapon | LMB - Shoot | Q - Class Ability | F/V - Cyber-Blade Melee<br>
+                E - Mounted Cannon | ESC - Pause | ` (Tilde) - Dev Console
             </p>
-            <button class="menu-btn" id="playBtn">GRAJ (PLAY)</button>
-            <button class="menu-btn" id="unlockBtn">POSTACIE (UNLOCK)</button>
-            <button class="menu-btn" id="settingsBtn">USTAWIENIA (SETTINGS)</button>
+            <button class="menu-btn" id="playBtn">PLAY</button>
+            <button class="menu-btn" id="unlockBtn">CHARACTERS</button>
+            <button class="menu-btn" id="settingsBtn">SETTINGS</button>
         </div>
 
         <div id="unlock-screen" class="menu-panel hidden">
-            <h2 style="color:#00ffaa; text-shadow:0 0 10px #00ffaa;">ODBLOKUJ POSTACIE</h2>
+            <h2 style="color:#00ffaa; text-shadow:0 0 10px #00ffaa;">UNLOCK CHARACTERS</h2>
             <div id="unlock-currency" class="small-readout"></div>
             <div id="character-grid" class="character-grid"></div>
-            <button class="menu-btn" id="backFromUnlockBtn">POWRÓT</button>
+            <button class="menu-btn" id="backFromUnlockBtn">BACK</button>
         </div>
 
         <div id="settings-screen" class="menu-panel hidden">
-            <h2 style="color:#00ffaa; text-shadow:0 0 10px #00ffaa;">USTAWIENIA</h2>
+            <h2 style="color:#00ffaa; text-shadow:0 0 10px #00ffaa;">SETTINGS</h2>
             <div class="settings-box">
-                <label for="mainSensSlider">CZUŁOŚĆ MYSZY: <span id="mainSensValue">1.0</span></label>
+                <label for="mainSensSlider">MOUSE SENSITIVITY: <span id="mainSensValue">1.0</span></label>
                 <input type="range" id="mainSensSlider" min="0.2" max="3.0" step="0.1" value="1.0">
                 <label for="mainFovSlider">FOV: <span id="mainFovValue">75</span></label>
                 <input type="range" id="mainFovSlider" min="60" max="110" step="1" value="75">
             </div>
-            <button class="menu-btn" id="backFromSettingsBtn">POWRÓT</button>
+            <button class="menu-btn" id="backFromSettingsBtn">BACK</button>
         </div>
-        <button class="menu-btn" id="startBtn">INICJUJ PROTOKÓŁ</button>
+        <button class="menu-btn" id="startBtn">INITIATE PROTOCOL</button>
     </div>
 
     <div id="pause-menu">
-        <h1 style="color:#0ff; font-size: 3rem; text-shadow: 0 0 10px #0ff;">PAUZA</h1>
-        <button class="menu-btn" id="resumeBtn">WZNAWIAJ</button>
-        <button class="menu-btn" id="homeBtn">MENU GŁÓWNE</button>
+        <h1 style="color:#0ff; font-size: 3rem; text-shadow: 0 0 10px #0ff;">PAUSED</h1>
+        <button class="menu-btn" id="resumeBtn">RESUME</button>
+        <button class="menu-btn" id="homeBtn">MAIN MENU</button>
 
         <div class="settings-box">
-            <label for="sensSlider">CZUŁOŚĆ MYSZY: <span id="sensValue">1.0</span></label>
+            <label for="sensSlider">MOUSE SENSITIVITY: <span id="sensValue">1.0</span></label>
             <input type="range" id="sensSlider" min="0.2" max="3.0" step="0.1" value="1.0">
             <label for="fovSlider">FOV: <span id="fovValue">75</span></label>
             <input type="range" id="fovSlider" min="60" max="110" step="1" value="75">
@@ -578,26 +628,26 @@
     </div>
 
     <div id="shop-menu">
-        <h1 style="color:#00ffaa; font-size: 2.5rem; text-shadow: 0 0 10px #00ffaa;">SKLEP CYBERNETYCZNY</h1>
-        <p style="color:#fff; font-size: 1.2rem;">PUNKTY SCORE: <span id="shop-score" style="color:#0f0;">0</span></p>
+        <h1 style="color:#00ffaa; font-size: 2.5rem; text-shadow: 0 0 10px #00ffaa;">CYBERNETIC SHOP</h1>
+        <p style="color:#fff; font-size: 1.2rem;">SCORE POINTS: <span id="shop-score" style="color:#0f0;">0</span></p>
         <p id="shop-subtitle" class="small-readout"></p>
         <div class="shop-grid" id="shop-offers"></div>
-        <h2 style="color:#ffaa00; margin:12px 0 4px;">SPRZEDAŻ BRONI</h2>
+        <button class="menu-btn" id="rerollShopBtn" style="margin:10px 0; background:#ffaa00; color:#000;">REROLL SHOP (300 SCORE)</button>
+        <h2 style="color:#ffaa00; margin:12px 0 4px;">WEAPON MARKET</h2>
         <div class="shop-grid" id="sell-offers"></div>
 
-        <button class="menu-btn" id="closeShopBtn" style="margin-top:20px; background:#00ffaa; color:#000;">NASTĘPNA
-            FALA</button>
+        <button class="menu-btn" id="closeShopBtn" style="margin-top:20px; background:#00ffaa; color:#000;">NEXT WAVE</button>
     </div>
 
     <div id="death" style="display:none;">
         <h1 style="font-size: 3rem; color:#ff0000; text-shadow:0 0 15px #ff0000;">SYSTEM FAILURE</h1>
         <p id="death-reason" style="color: #ffaa00; font-size: 1.2rem;"></p>
         <div id="death-summary">
-            WYNIK: <span id="finalScore">0</span><br>
-            PRZETRWANO FAL: <span id="finalWave">1</span><br>
-            ZABICIA: <span id="finalKills">0</span><br>
-            RDZENIE ZDOBYTE: <span id="finalCurrency">0</span><br>
-            RDZENIE RAZEM: <span id="totalCurrency">0</span>
+            FINAL SCORE: <span id="finalScore">0</span><br>
+            WAVES SURVIVED: <span id="finalWave">1</span><br>
+            ENEMIES KILLED: <span id="finalKills">0</span><br>
+            CORES EARNED: <span id="finalCurrency">0</span><br>
+            TOTAL CORES: <span id="totalCurrency">0</span>
         </div>
         <button class="menu-btn" onclick="location.reload()">REBOOT</button>
     </div>
@@ -605,14 +655,14 @@
     <div id="score-panel">
         SCORE: <span id="score">0</span><br>
         KILLS: <span id="kills">0</span><br>
-        RDZENIE: <span id="meta-currency">0</span><br>
-        WROGI: <span id="enemies-left">0</span>
+        CORES: <span id="meta-currency">0</span><br>
+        ENEMIES: <span id="enemies-left">0</span>
     </div>
 
     <div id="weapon-info">
-        BROŃ: <span id="weapon-name">PISTOLET</span>
+        WEAPON: <span id="weapon-name">PISTOL</span>
         <div id="weapon-slots"></div>
-        <div id="ability-indicator">[Q] UMIEJĘTNOŚĆ: READY</div>
+        <div id="ability-indicator">[Q] ABILITY: READY</div>
         <div id="melee-indicator">[F] CYBER-BLADE: READY</div>
         <div id="dash-indicator">DASH: READY</div>
         <div id="mobility-indicator"></div>
@@ -622,8 +672,16 @@
 
     <div id="hud">
         HP: <span id="hp">100</span><br>
-        <span id="shield-hud">TARCZA: —</span><br>
+        <span id="shield-hud">SHIELD: —</span><br>
         <div id="ammo-list"></div>
+    </div>
+
+    <div id="dev-console">
+        <div id="dev-console-output">SYSTEM CHEAT CONSOLE READY. TYPE 'help' FOR COMMANDS.</div>
+        <div id="dev-console-input-row">
+            <span id="dev-console-prompt">&gt;</span>
+            <input type="text" id="dev-console-input" placeholder="Type command..." autocomplete="off" />
+        </div>
     </div>
 
     <div id="crosshair"></div>
@@ -1841,72 +1899,72 @@
         const MAX_EQUIPPED_WEAPONS = 2;
 
         const WEAPON_CATALOG = [
-            { id: 'pistol', name: 'PISTOLET', color: '#00ff66', delay: 220, damage: 2.0, speed: 110, type: 'single', ammo: 70, maxAmmo: 180, ammoGain: 28, price: 0, sell: 350, desc: 'Pewny start, szybki i tani w utrzymaniu.' },
-            { id: 'rifle', name: 'KARABIN', color: '#00ffff', delay: 100, damage: 1.05, speed: 130, type: 'auto', ammo: 140, maxAmmo: 340, ammoGain: 50, mag: 10, reload: 1200, price: 2500, sell: 1250, desc: 'Automat z magazynkiem i dobrym DPS.' },
-            { id: 'shotgun', name: 'POMPA', color: '#ff8800', delay: 850, damage: 0.58, speed: 90, type: 'shotgun', ammo: 34, maxAmmo: 90, ammoGain: 12, pellets: 7, spread: 0.32, price: 3500, sell: 1700, desc: 'Obszarowy śrut na bliski dystans — słabszy pojedynczy strzał, większy rozrzut.' },
-            { id: 'smg', name: 'SMG', color: '#66ccff', delay: 70, damage: 0.72, speed: 125, type: 'auto', ammo: 180, maxAmmo: 430, ammoGain: 70, mag: 35, reload: 950, price: 3200, sell: 1600, desc: 'Bardzo szybka broń na lekkich wrogów.' },
-            { id: 'burst', name: 'BURST-3', color: '#ffee55', delay: 320, damage: 0.95, speed: 135, type: 'burst', ammo: 120, maxAmmo: 300, ammoGain: 45, burst: 3, price: 3000, sell: 1500, desc: 'Trzy kontrolowane pociski na klik.' },
-            { id: 'sniper', name: 'SNIPER', color: '#ffffff', delay: 950, damage: 7.5, speed: 190, type: 'single', ammo: 28, maxAmmo: 72, ammoGain: 9, pierce: 2, price: 5200, sell: 2600, desc: 'Wolny, ale przebija i kasuje elity.' },
-            { id: 'crossbow', name: 'KUSZA', color: '#cc8844', delay: 620, damage: 3.7, speed: 105, type: 'single', ammo: 48, maxAmmo: 130, ammoGain: 16, pierce: 1, price: 3800, sell: 1900, desc: 'Ciche bełty z naturalnym przebiciem.' },
-            { id: 'wand', name: 'RÓŻDŻKA', color: '#cc66ff', delay: 360, damage: 1.8, speed: 115, type: 'single', ammo: 90, maxAmmo: 240, ammoGain: 32, price: 4100, sell: 2050, desc: 'Magiczny pocisk, idealny pod podpalenie.' },
-            { id: 'ice_staff', name: 'LODOWNIK', color: '#99ddff', delay: 480, damage: 2.2, speed: 105, type: 'single', ammo: 78, maxAmmo: 210, ammoGain: 26, price: 4300, sell: 2150, desc: 'Spowalnia tempo walki, gdy ma upgrade.' },
-            { id: 'plasma', name: 'PLAZMA', color: '#00ffaa', delay: 420, damage: 2.6, speed: 100, type: 'single', ammo: 74, maxAmmo: 200, ammoGain: 24, splash: 1.6, price: 4700, sell: 2350, desc: 'Energetyczne kule z małym obszarem trafienia.' },
-            { id: 'railgun', name: 'RAILGUN', color: '#33ffcc', delay: 1150, damage: 9.0, speed: 230, type: 'single', ammo: 22, maxAmmo: 60, ammoGain: 7, pierce: 5, price: 6200, sell: 3100, desc: 'Linia śmierci przez całą hordę.' },
-            { id: 'grenade', name: 'GRANATNIK', color: '#ff4433', delay: 900, damage: 4.2, speed: 62, type: 'explosive', ammo: 12, maxAmmo: 36, ammoGain: 4, radius: 5.2, price: 5400, sell: 2700, desc: 'Pociski wybuchowe do kontroli tłumu.' },
-            { id: 'flame', name: 'MIOTACZ OGNIA', color: '#ff2200', delay: 55, damage: 0.55, speed: 55, type: 'flame', ammo: 220, maxAmmo: 520, ammoGain: 80, price: 5000, sell: 2500, desc: 'Krótki zasięg, ciągły nacisk i ogień.' },
-            { id: 'laser', name: 'LASER', color: '#ff00aa', delay: 85, damage: 0.9, speed: 180, type: 'auto', ammo: 155, maxAmmo: 360, ammoGain: 55, mag: 50, reload: 1000, price: 4900, sell: 2450, desc: 'Precyzyjny promień z wysokim tempem.' },
-            { id: 'boomerang', name: 'BOOMERANG', color: '#ffaaee', delay: 700, damage: 3.1, speed: 80, type: 'single', ammo: 44, maxAmmo: 120, ammoGain: 15, pierce: 3, price: 4000, sell: 2000, desc: 'Wolny, duży pocisk przebijający kilka celów.' }
+            { id: 'pistol', name: 'PISTOL', color: '#00ff66', delay: 220, damage: 2.0, speed: 110, type: 'single', ammo: 70, maxAmmo: 180, ammoGain: 28, price: 0, sell: 350, desc: 'Reliable sidearm, fast and free to maintain.' },
+            { id: 'rifle', name: 'ASSAULT RIFLE', color: '#00ffff', delay: 100, damage: 1.05, speed: 130, type: 'auto', ammo: 140, maxAmmo: 340, ammoGain: 50, mag: 10, reload: 1200, price: 2500, sell: 1250, desc: 'Automatic rifle with magazine reload and solid DPS.' },
+            { id: 'shotgun', name: 'SHOTGUN', color: '#ff8800', delay: 850, damage: 0.58, speed: 90, type: 'shotgun', ammo: 34, maxAmmo: 90, ammoGain: 12, pellets: 7, spread: 0.32, price: 3500, sell: 1700, desc: 'High close-range spread damage to blast through hordes.' },
+            { id: 'smg', name: 'SUBMACHINE GUN', color: '#66ccff', delay: 70, damage: 0.72, speed: 125, type: 'auto', ammo: 180, maxAmmo: 430, ammoGain: 70, mag: 35, reload: 950, price: 3200, sell: 1600, desc: 'Rapid fire submachine gun against light enemies.' },
+            { id: 'burst', name: 'BURST RIFLE', color: '#ffee55', delay: 320, damage: 0.95, speed: 135, type: 'burst', ammo: 120, maxAmmo: 300, ammoGain: 45, burst: 3, price: 3000, sell: 1500, desc: 'Three controlled burst rounds per trigger pull.' },
+            { id: 'sniper', name: 'SNIPER RIFLE', color: '#ffffff', delay: 950, damage: 7.5, speed: 190, type: 'single', ammo: 28, maxAmmo: 72, ammoGain: 9, pierce: 2, price: 5200, sell: 2600, desc: 'Heavy piercing rifle that deletes elite targets.' },
+            { id: 'crossbow', name: 'CROSSBOW', color: '#cc8844', delay: 620, damage: 3.7, speed: 105, type: 'single', ammo: 48, maxAmmo: 130, ammoGain: 16, pierce: 1, price: 3800, sell: 1900, desc: 'Silent heavy bolts with natural enemy piercing.' },
+            { id: 'wand', name: 'FIRE WAND', color: '#cc66ff', delay: 360, damage: 1.8, speed: 115, type: 'single', ammo: 90, maxAmmo: 240, ammoGain: 32, price: 4100, sell: 2050, desc: 'Magical flame projectile that ignites targets.' },
+            { id: 'ice_staff', name: 'ICE STAFF', color: '#99ddff', delay: 480, damage: 2.2, speed: 105, type: 'single', ammo: 78, maxAmmo: 210, ammoGain: 26, price: 4300, sell: 2150, desc: 'Frost staff that slows enemy movement speed.' },
+            { id: 'plasma', name: 'PLASMA CANNON', color: '#00ffaa', delay: 420, damage: 2.6, speed: 100, type: 'single', ammo: 74, maxAmmo: 200, ammoGain: 24, splash: 1.6, price: 4700, sell: 2350, desc: 'Plasma spheres with small area explosion damage.' },
+            { id: 'railgun', name: 'RAILGUN', color: '#33ffcc', delay: 1150, damage: 9.0, speed: 230, type: 'single', ammo: 22, maxAmmo: 60, ammoGain: 7, pierce: 5, price: 6200, sell: 3100, desc: 'Instant laser line cutting through the entire horde.' },
+            { id: 'grenade', name: 'GRENADE LAUNCHER', color: '#ff4433', delay: 900, damage: 4.2, speed: 62, type: 'explosive', ammo: 12, maxAmmo: 36, ammoGain: 4, radius: 5.2, price: 5400, sell: 2700, desc: 'Explosive grenades for heavy crowd control.' },
+            { id: 'flame', name: 'FLAMETHROWER', color: '#ff2200', delay: 55, damage: 0.55, speed: 55, type: 'flame', ammo: 220, maxAmmo: 520, ammoGain: 80, price: 5000, sell: 2500, desc: 'Short-range continuous stream of burning fire.' },
+            { id: 'laser', name: 'LASER BEAM', color: '#ff00aa', delay: 85, damage: 0.9, speed: 180, type: 'auto', ammo: 155, maxAmmo: 360, ammoGain: 55, mag: 50, reload: 1000, price: 4900, sell: 2450, desc: 'High-precision continuous energy beam.' },
+            { id: 'boomerang', name: 'CYBER BOOMERANG', color: '#ffaaee', delay: 700, damage: 3.1, speed: 80, type: 'single', ammo: 44, maxAmmo: 120, ammoGain: 15, pierce: 3, price: 4000, sell: 2000, desc: 'Heavy returning projectile piercing multiple targets.' }
         ];
 
         let weapons = WEAPON_CATALOG.map(w => ({ ...w, currentMag: w.mag || 999, reloading: false }));
 
         const UPGRADE_CATALOG = [
-            { id: 'damage10', name: 'GLOBAL: DAMAGE +10%', price: 1800, desc: 'Każda broń zadaje 10% więcej obrażeń.', applies: 'global' },
-            { id: 'damage20', name: 'GLOBAL: DAMAGE +20%', price: 3600, desc: 'Drugi mocniejszy pakiet obrażeń.', applies: 'global' },
-            { id: 'fireRate10', name: 'GLOBAL: SZYBKOSTRZELNOŚĆ', price: 2400, desc: 'Delay każdej broni mniejszy o 10%.', applies: 'global' },
-            { id: 'maxAmmo35', name: 'GLOBAL: MAGAZYN AMMO', price: 2200, desc: 'Rezerwa amunicji wszystkich broni +35%.', applies: 'global' },
-            { id: 'pickupAmmo50', name: 'GLOBAL: WIĘCEJ AMMO', price: 2100, desc: 'Ammo z pickupów daje 50% więcej.', applies: 'global' },
-            { id: 'globalPierce', name: 'GLOBAL: PRZEBICIE', price: 3000, desc: 'Pociski dostają +1 przebicie.', applies: 'global' },
-            { id: 'projectile10', name: 'GLOBAL: +10% POCISKÓW', price: 2800, desc: 'Strzelby i serie mają minimum 10% więcej pocisków.', applies: 'global' },
-            { id: 'reload30', name: 'GLOBAL: RELOAD -30%', price: 1900, desc: 'Bronie z magazynkiem przeładowują szybciej.', applies: 'global' },
-            { id: 'crit10', name: 'GLOBAL: KRYTYK 10%', price: 2600, desc: '10% szans na podwójne obrażenia.', applies: 'global' },
-            { id: 'vampire', name: 'GLOBAL: VAMPIRE', price: 3200, desc: 'Leczy czasem przy trafieniu i zawsze po zabiciu.', applies: 'global' },
-            { id: 'shotgunHorizontal', name: 'POMPA: LINEARNY STRZAŁ', price: 2600, desc: 'Śrut układa się w poziomy rząd i przebija wrogów.', applies: 'shotgun' }
+            { id: 'damage10', name: 'GLOBAL: DAMAGE +10%', price: 1800, desc: 'All weapons deal 10% extra damage.', applies: 'global' },
+            { id: 'damage20', name: 'GLOBAL: DAMAGE +20%', price: 3600, desc: 'Second tier damage boost for all weapons.', applies: 'global' },
+            { id: 'fireRate10', name: 'GLOBAL: FIRE RATE +10%', price: 2400, desc: 'Reduces weapon fire delay by 10%.', applies: 'global' },
+            { id: 'maxAmmo35', name: 'GLOBAL: AMMO CAPACITY +35%', price: 2200, desc: 'Increases max ammo reserve by 35%.', applies: 'global' },
+            { id: 'pickupAmmo50', name: 'GLOBAL: AMMO PICKUPS +50%', price: 2100, desc: 'Ammo pickups restore 50% more ammo.', applies: 'global' },
+            { id: 'globalPierce', name: 'GLOBAL: PIERCING +1', price: 3000, desc: 'Projectiles pierce through +1 additional enemy.', applies: 'global' },
+            { id: 'projectile10', name: 'GLOBAL: SHOTGUN PELLETS +10%', price: 2800, desc: 'Shotguns and burst weapons fire extra pellets.', applies: 'global' },
+            { id: 'reload30', name: 'GLOBAL: RELOAD SPEED +30%', price: 1900, desc: 'Magazine weapons reload 30% faster.', applies: 'global' },
+            { id: 'crit10', name: 'GLOBAL: CRITICAL STRIKE 10%', price: 2600, desc: '10% chance to deal double damage on hit.', applies: 'global' },
+            { id: 'vampire', name: 'GLOBAL: VAMPIRE LEECH', price: 3200, desc: 'Heals health on hit and enemy kill.', applies: 'global' },
+            { id: 'shotgunHorizontal', name: 'SHOTGUN: HORIZONTAL SPREAD', price: 2600, desc: 'Pellets spread horizontally and pierce targets.', applies: 'shotgun' }
         ];
 
         const MOVEMENT_SHOP_ITEMS = [
-            { id: 'dash', name: 'MOBILITY: DASH', price: 2600, desc: 'SHIFT wykonuje szybki doskok z cooldownem.' },
-            { id: 'doubleJump', name: 'MOBILITY: DOUBLE JUMP', price: 3200, desc: 'Drugi skok w powietrzu.' },
-            { id: 'wallRun', name: 'MOBILITY: WALL RUN', price: 3800, desc: 'Przy ścianie i ruchu do przodu utrzymujesz prędkość.' }
+            { id: 'dash', name: 'MOBILITY: DASH', price: 2600, desc: 'Press SHIFT to perform a rapid forward dash.' },
+            { id: 'doubleJump', name: 'MOBILITY: DOUBLE JUMP', price: 3200, desc: 'Allows a second mid-air jump.' },
+            { id: 'wallRun', name: 'MOBILITY: WALL RUN', price: 3800, desc: 'Run along walls when moving forward.' }
         ];
 
         const POWERUP_SHOP_ITEMS = [
-            { id: 'infiniteAmmo', name: 'POWER-UP: INFINITE AMMO', price: 1500, desc: 'Nieskończona amunicja przez 10 sekund.' },
-            { id: 'quadDamage', name: 'POWER-UP: QUAD DAMAGE', price: 1800, desc: 'Pociski zadają x4 obrażeń przez 10 sekund.' },
-            { id: 'bulletTime', name: 'POWER-UP: BULLET TIME', price: 1700, desc: 'Wrogowie i ich pociski zwalniają przez 8 sekund.' }
+            { id: 'infiniteAmmo', name: 'POWER-UP: INFINITE AMMO', price: 1500, desc: 'Infinite ammo reserve for 10 seconds.' },
+            { id: 'quadDamage', name: 'POWER-UP: QUAD DAMAGE', price: 1800, desc: 'Projectiles deal x4 damage for 10 seconds.' },
+            { id: 'bulletTime', name: 'POWER-UP: BULLET TIME', price: 1700, desc: 'Enemies and projectiles slow down for 8 seconds.' }
         ];
 
-        // Tarcze gracza — kupowane w sklepie, absorbują obrażenia przed HP
+        // Player Shields — bought in shop, absorb damage before HP
         const SHIELD_SHOP_ITEMS = [
             {
                 id: 'disposableShield',
-                name: 'TARCZA JEDNORAZOWA',
+                name: 'DISPOSABLE SHIELD',
                 price: 1200,
                 capacity: 55,
-                desc: 'Absorbuje 55 pkt obrażeń. Po zniszczeniu znika do końca fali lub do ponownego zakupu.'
+                desc: 'Absorbs 55 damage. Destroyed until next wave or repurchase.'
             },
             {
                 id: 'rechargingShield',
-                name: 'TARCZA ODNAWIALNA',
+                name: 'RECHARGING SHIELD',
                 price: 2400,
                 capacity: 45,
                 regenDelay: 5000,
                 regenRate: 10,
-                desc: 'Absorbuje 45 pkt obrażeń. Po 5 s bez obrażeń regeneruje się powoli (10/s).'
+                desc: 'Absorbs 45 damage. Slowly regenerates (10/s) after 5s without taking damage.'
             }
         ];
 
-        // Stan tarczy gracza w bieżącej rundzie
+        // Player Shield State
         let playerShield = {
             type: null,
             current: 0,
@@ -1916,20 +1974,20 @@
             lastDamageTime: 0
         };
 
-        // Unoszące się liczby obrażeń nad wrogami + system combo
+        // Floating Damage Numbers & Combo System
         const COMBO_RESET_MS = 850;
         let enemyDamageCombos = {};
         let floatingDamageNumbers = [];
 
         const CHARACTER_CATALOG = [
-            { id: 'rookie', name: 'ROOKIE', cost: 0, weapon: 'pistol', desc: 'Podstawowa postać. Q: Impuls Taktyczny, Pasywka: +15 HP i +20% Szybkości.' },
-            { id: 'gunner', name: 'GUNNER', cost: 80, weapon: 'rifle', desc: 'Q: Przetaktowanie (Ogromna szybkostrzelność), Pasywka: +25% Magazynka.' },
-            { id: 'breacher', name: 'BREACHER', cost: 110, weapon: 'shotgun', desc: 'Q: Tarcza Energetyczna, Pasywka: Pancerz i dodatkowy śrut.' },
-            { id: 'pyromancer', name: 'PYROMANCER', cost: 140, weapon: 'wand', desc: 'Q: Fala Ognia 360°, Pasywka: Podpalanie wrogów przy każdym strzale.' },
-            { id: 'frost', name: 'FROST', cost: 150, weapon: 'ice_staff', desc: 'Q: Zamieć Mrozu (Zamraża w miejscu), Pasywka: Spowolnienie z broni.' },
-            { id: 'railrunner', name: 'RAILRUNNER', cost: 190, weapon: 'railgun', desc: 'Q: Cyber-Blink Teleport, Pasywka: Naturalne przebijanie wrogów.' },
-            { id: 'demolition', name: 'DEMOLITION', cost: 180, weapon: 'grenade', desc: 'Q: Impuls EMP Ogłuszający, Pasywka: Odporność na własny wybuch.' },
-            { id: 'vampire', name: 'VAMPIRE', cost: 210, weapon: 'boomerang', desc: 'Q: Krwawa Nova (Kradzież HP hordzie), Pasywka: Wbudowany Vampire Leech.' }
+            { id: 'rookie', name: 'ROOKIE', cost: 0, weapon: 'pistol', desc: 'Standard Operative. Q: Tactical Frag Grenade, Passive: +15 HP & +20% Speed.' },
+            { id: 'gunner', name: 'GUNNER', cost: 80, weapon: 'rifle', desc: 'Q: Overclock (Extreme Fire Rate), Passive: +25% Ammo Capacity.' },
+            { id: 'breacher', name: 'BREACHER', cost: 110, weapon: 'shotgun', desc: 'Q: Energy Shield, Passive: Armor & Extra Pellets.' },
+            { id: 'pyromancer', name: 'PYROMANCER', cost: 140, weapon: 'wand', desc: 'Q: 360° Flame Wave, Passive: Burn enemies on shot.' },
+            { id: 'frost', name: 'FROST', cost: 150, weapon: 'ice_staff', desc: 'Q: Frost Blizzard (Freezes in place), Passive: Slow enemies on hit.' },
+            { id: 'railrunner', name: 'RAILRUNNER', cost: 190, weapon: 'railgun', desc: 'Q: Cyber-Blink Teleport, Passive: Natural bullet piercing.' },
+            { id: 'demolition', name: 'DEMOLITION', cost: 180, weapon: 'grenade', desc: 'Q: EMP Shockwave Grenade, Passive: Immunity to self explosion.' },
+            { id: 'vampire', name: 'VAMPIRE', cost: 210, weapon: 'boomerang', desc: 'Q: Blood Nova (HP Drain), Passive: Built-in Vampire Leech.' }
         ];
 
         // --- 7. META-STAN I ZAPIS (localStorage) ---
@@ -2145,10 +2203,11 @@
             updateHeartbeatState();
         }
 
-        // Zadaje obrażenia graczowi — najpierw tarcza, potem HP
-        function damagePlayer(amount) {
-            if (stats.dead || amount <= 0) return;
+        // Deals damage to player — shield absorbs first, then HP
+        function damagePlayer(amount, sourceName = 'Cyber Hazard') {
+            if (stats.dead || amount <= 0 || stats.godMode) return;
 
+            stats.lastDamageSource = sourceName;
             let remaining = amount;
 
             if (playerShield.type && playerShield.current > 0) {
@@ -2173,16 +2232,16 @@
             updateHeartbeatState();
         }
 
-        // Aktualizuje pasek tarczy w HUD
+        // Updates shield display in HUD
         function updatePlayerShieldHud() {
             const el = document.getElementById('shield-hud');
             if (!el) return;
             if (!playerShield.type || playerShield.max <= 0) {
-                el.innerText = 'TARCZA: —';
+                el.innerText = 'SHIELD: —';
                 el.style.color = '#556677';
                 return;
             }
-            const label = playerShield.type === 'recharging' ? 'TARCZA ODNAWIALNA' : 'TARCZA JEDNORAZOWA';
+            const label = playerShield.type === 'recharging' ? 'RECHARGING SHIELD' : 'DISPOSABLE SHIELD';
             el.innerText = `${label}: ${Math.ceil(playerShield.current)}/${playerShield.max}`;
             el.style.color = playerShield.current > 0 ? '#00ffff' : '#ff4444';
         }
@@ -2344,7 +2403,7 @@
                 const selected = metaState.selectedCharacter === character.id;
                 const card = document.createElement('div');
                 card.className = `character-card ${selected ? 'selected-card' : ''}`;
-                const buttonText = unlocked ? (selected ? 'WYBRANO' : 'WYBIERZ') : `ODBLOKUJ (${character.cost})`;
+                const buttonText = unlocked ? (selected ? 'SELECTED' : 'SELECT') : `UNLOCK (${character.cost} CORES)`;
                 const disabled = (!unlocked && metaState.currency < character.cost) || selected;
                 card.innerHTML = `
                     <h3>${character.name}</h3>
@@ -3007,6 +3066,8 @@
             abilityCooldownTimer = cd / 1000;
             cyberAudio.playAbilitySound(charId);
 
+            const camDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).normalize();
+
             if (charId === 'pyromancer') {
                 const wavePos = camera.position.clone();
                 createExplosion(wavePos, 10.0, 40, true);
@@ -3020,11 +3081,11 @@
                 activateBuff('quadDamage', 2000);
                 stats.hp = Math.min(stats.maxHp, stats.hp + 30);
             } else if (charId === 'railrunner') {
-                const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                const dir = camDir.clone();
                 dir.y = 0; dir.normalize();
                 const targetX = camera.position.x + dir.x * 12.0;
                 const targetZ = camera.position.z + dir.z * 12.0;
-                if (!isObstacleCollision(targetX, targetZ, 0.8)) {
+                if (!isObstacleCollision(targetX, targetZ, 0.8, camera.position.y - 1.7)) {
                     camera.position.x = targetX;
                     camera.position.z = targetZ;
                 }
@@ -3032,13 +3093,18 @@
             } else if (charId === 'gunner') {
                 activateBuff('infiniteAmmo', 5000);
             } else if (charId === 'demolition') {
-                const empPos = camera.position.clone();
-                createExplosion(empPos, 12.0, 45, true);
-                enemies.forEach(e => {
-                    if (e.position.distanceTo(empPos) <= 12.0) {
-                        e.userData.slowTimer = 4.0;
-                    }
-                });
+                const spawnPos = camera.position.clone().add(camDir.clone().multiplyScalar(1.2));
+                const empBullet = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
+                empBullet.position.copy(spawnPos);
+                empBullet.userData = {
+                    velocity: camDir.clone().multiplyScalar(42).add(new THREE.Vector3(0, 3, 0)),
+                    damage: 55,
+                    radius: 12.0,
+                    slow: 4.0,
+                    life: 2.5
+                };
+                scene.add(empBullet);
+                explosiveBullets.push(empBullet);
             } else if (charId === 'vampire') {
                 const novaPos = camera.position.clone();
                 let drained = 0;
@@ -3058,15 +3124,18 @@
                     }
                 });
             } else {
-                const pulsePos = camera.position.clone();
-                enemies.forEach(e => {
-                    if (e.position.distanceTo(pulsePos) <= 9.0) {
-                        const pushDir = e.position.clone().sub(pulsePos).normalize();
-                        e.position.add(pushDir.multiplyScalar(6.0));
-                        e.userData.hp -= 25;
-                        updateEnemyHpDisplay(e);
-                    }
-                });
+                // Rookie: Throws Tactical Frag Grenade forward!
+                const spawnPos = camera.position.clone().add(camDir.clone().multiplyScalar(1.0));
+                const fragBullet = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 12), new THREE.MeshBasicMaterial({ color: 0x00ff66 }));
+                fragBullet.position.copy(spawnPos);
+                fragBullet.userData = {
+                    velocity: camDir.clone().multiplyScalar(38).add(new THREE.Vector3(0, 4, 0)),
+                    damage: 65,
+                    radius: 8.5,
+                    life: 2.5
+                };
+                scene.add(fragBullet);
+                explosiveBullets.push(fragBullet);
             }
         }
 
@@ -3091,7 +3160,9 @@
                     toEnemy.normalize();
                     const dot = camDir.dot(toEnemy);
                     if (dot > 0.4) {
-                        e.userData.hp -= 45;
+                        // Melee deals 25% of target's max HP (minimum 18 damage)
+                        const damage = Math.max(18, Math.floor(e.userData.maxHp * 0.25));
+                        e.userData.hp -= damage;
                         e.position.add(camDir.clone().multiplyScalar(3.5));
                         e.userData.burnTimer = 2.0;
                         cyberAudio.playHitmarker();
@@ -3159,8 +3230,24 @@
 
             generateProceduralMap();
 
-            // Obsługa klawiatury — ruch WASD, skok, broń, umiejętności
+            // Keyboard input — movement WASD, jump, weapons, abilities, dev console
             window.onkeydown = (e) => {
+                if (e.key === '`' || e.key === '~' || e.code === 'Backquote') {
+                    e.preventDefault();
+                    toggleDevConsole();
+                    return;
+                }
+                if (devConsoleOpen) {
+                    if (e.key === 'Enter') {
+                        const input = document.getElementById('dev-console-input');
+                        if (input && input.value) {
+                            handleConsoleCommand(input.value);
+                            input.value = '';
+                        }
+                    }
+                    return;
+                }
+
                 const k = e.key.toLowerCase();
                 if (k === 'w') move.f = true; if (k === 's') move.b = true;
                 if (k === 'a') move.l = true; if (k === 'd') move.r = true;
@@ -3205,6 +3292,21 @@
                     cyberAudio.playDash();
                 }
             };
+
+            const rerollBtn = document.getElementById('rerollShopBtn');
+            if (rerollBtn) {
+                rerollBtn.onclick = () => {
+                    const cost = 300;
+                    if (stats.score >= cost) {
+                        stats.score -= cost;
+                        document.getElementById('score').innerText = stats.score;
+                        document.getElementById('shop-score').innerText = stats.score;
+                        generateShopOffers();
+                    } else {
+                        alert('NOT ENOUGH SCORE! NEED 300 SCORE TO REROLL.');
+                    }
+                };
+            }
 
             window.onkeyup = (e) => {
                 const k = e.key.toLowerCase();
@@ -3411,8 +3513,8 @@
             ctx.fillRect(2, 2, 124, 12);
 
             const texture = new THREE.CanvasTexture(canvas);
-            // depthTest: true and depthWrite: false ensures walls properly occlude 2D HP bars!
-            const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: true, depthWrite: false, transparent: true });
+            // depthTest: false ensures HP bar renders on top of enemy head mesh without clipping!
+            const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false, transparent: true });
             const sprite = new THREE.Sprite(spriteMat);
             sprite.scale.set(1.8, 0.25, 1);
             sprite.renderOrder = 999;
@@ -3420,16 +3522,16 @@
             return sprite;
         }
 
-        // Tworzy bossa co 5 fal — zmniejszona skala w stosunku do mapy
+        // Creates boss every 5 waves — boosted HP and difficulty
         function spawnBoss() {
             const bossTypes = [
-                { name: "CYBER TITAN (SZYBKI STRZELEC)", bossId: "shooter", modelKey: "bossTitan", texture: textures.bossTitan, hp: 80, speed: 6.0, scale: 3.8, attackCooldown: 400, damage: 20 },
-                { name: "VOID BEHEMOTH (FALA UDERZENIOWA)", bossId: "shockwave", modelKey: "bossBehemoth", texture: textures.bossBehemoth, hp: 160, speed: 2.0, scale: 4.2, attackCooldown: 3200, damage: 35 },
-                { name: "PLASMA LORD (PRZYWOŁYWACZ)", bossId: "summoner", modelKey: "bossPlasma", texture: textures.bossPlasma, hp: 70, speed: 3.5, scale: 3.8, attackCooldown: 4000, damage: 15 }
+                { name: "CYBER TITAN (RAPID SHOOTER)", bossId: "shooter", modelKey: "bossTitan", texture: textures.bossTitan, hp: 450, speed: 6.0, scale: 3.8, attackCooldown: 300, damage: 22 },
+                { name: "VOID BEHEMOTH (SHOCKWAVE TANK)", bossId: "shockwave", modelKey: "bossBehemoth", texture: textures.bossBehemoth, hp: 850, speed: 2.5, scale: 4.2, attackCooldown: 2600, damage: 40 },
+                { name: "PLASMA LORD (SUMMONER)", bossId: "summoner", modelKey: "bossPlasma", texture: textures.bossPlasma, hp: 550, speed: 4.0, scale: 3.8, attackCooldown: 3200, damage: 20 }
             ];
 
             const selected = bossTypes[Math.floor(Math.random() * bossTypes.length)];
-            const scaledHp = Math.floor(selected.hp * (1 + (currentWave / 5 - 1) * 0.5));
+            const scaledHp = Math.floor(selected.hp * (1 + (currentWave / 5 - 1) * 0.65));
 
             let entity = loadedModels[selected.modelKey] ? loadedModels[selected.modelKey].clone(true) : createProceduralEnemyMesh(selected.modelKey);
             entity.scale.set(selected.scale, selected.scale, selected.scale);
@@ -3443,7 +3545,7 @@
             entity.position.set(ex, getEnemyGroundY(ex, ez), ez);
 
             const hpBar = createHPBar();
-            hpBar.position.y = selected.scale + 0.6;
+            hpBar.position.y = 4.8;
             entity.add(hpBar);
             refreshEnemyHitMetrics(entity);
 
@@ -3459,7 +3561,7 @@
                 speed: selected.speed,
                 damage: selected.damage,
                 turnSpeed: 999.0,
-                damageMult: 1 + (currentWave - 1) * 0.2,
+                damageMult: 1 + (currentWave - 1) * 0.25,
                 burnTimer: 0,
                 slowTimer: 0,
                 attackCooldown: selected.attackCooldown,
@@ -3504,12 +3606,12 @@
             cyberAudio.setMusicState(isBossWave ? 'boss' : 'wave');
 
             if (isBossWave) {
-                notice.innerText = "FALA " + currentWave + "\n⚠️ POJAWIŁ SIĘ BOSS! ⚠️";
+                notice.innerText = "WAVE " + currentWave + "\n⚠️ BOSS DETECTED! ⚠️";
                 notice.style.color = "#ff0000";
                 notice.style.display = 'block';
                 setTimeout(() => { notice.style.display = 'none'; spawnBoss(); }, 2500);
             } else {
-                notice.innerText = hordeWaveActive ? "FALA " + currentWave + "\nHORDA NADCIĄGA!" : "FALA " + currentWave;
+                notice.innerText = hordeWaveActive ? "WAVE " + currentWave + "\nHORDE INBOUND!" : "WAVE " + currentWave;
                 notice.style.color = "#ffff00";
                 notice.style.display = 'block';
                 enemiesToSpawnInWave = Math.floor((5 + (currentWave - 1) * 4) * (hordeWaveActive ? 1.35 : 1));
@@ -3543,7 +3645,7 @@
                 const notice = document.getElementById('wave-notice');
 
                 if (isBossWave) {
-                    notice.innerText = "BOSS POKONANY!\nOTWIERANIE SKLEPU...";
+                    notice.innerText = "BOSS DEFEATED!\nOPENING SHOP...";
                     notice.style.color = "#00ffaa";
                     notice.style.display = 'block';
                     setTimeout(() => {
@@ -3551,10 +3653,10 @@
                         openShop();
                     }, 2500);
                 } else {
-                    notice.innerText = "FALA " + currentWave + " UKOŃCZONA!";
+                    notice.innerText = "WAVE " + currentWave + " CLEARED!";
                     notice.style.color = "#00ffaa";
                     notice.style.display = 'block';
-                    setTimeout(() => { notice.innerText = "PRZYGOTUJ SIĘ..."; }, 2000);
+                    setTimeout(() => { notice.innerText = "PREPARE YOURSELF..."; }, 2000);
                     setTimeout(() => { notice.style.display = 'none'; startWave(currentWave + 1); }, 4000);
                 }
             }
@@ -3664,7 +3766,7 @@
             group.position.set(ex, spawnY, ez);
 
             const hpBar = createHPBar();
-            hpBar.position.y = scale + 0.4;
+            hpBar.position.y = scale + 0.65;
             group.add(hpBar);
             refreshEnemyHitMetrics(group);
 
@@ -3678,7 +3780,7 @@
                 shieldHits: type === 'shield' ? 10 : 0,
                 maxShieldHits: type === 'shield' ? 10 : 0,
                 hasShield: type === 'shield',
-                turnSpeed: type === 'shield' ? 1.35 : 999.0,
+                turnSpeed: type === 'shield' ? 0.85 : 999.0,
                 speed: speed,
                 damageMult: 1 + (currentWave - 1) * 0.25,
                 hpBar: hpBar,
@@ -3787,6 +3889,16 @@
 
             explosions.push({ mesh: expMesh, maxRadius: radius, currentRadius: 0.5, speed: 18.0 });
 
+            // Explode nearby barrels when grenade/explosion hits them!
+            for (let k = barrels.length - 1; k >= 0; k--) {
+                const barrel = barrels[k];
+                if (barrel.position.distanceTo(pos) <= radius) {
+                    mapObjectsGroup.remove(barrel);
+                    barrels.splice(k, 1);
+                    createExplosion(barrel.position, 6.0, 40, true);
+                }
+            }
+
             if (damage > 0) {
                 enemies.forEach(e => {
                     if (e.position.distanceTo(pos) <= radius) {
@@ -3799,8 +3911,8 @@
                     }
                 });
 
-                if (camera.position.distanceTo(pos) <= radius && selectedCharacterId !== 'demolition') {
-                    damagePlayer(damage * 1.5);
+                if (camera.position.distanceTo(pos) <= radius && selectedCharacterId !== 'demolition' && selectedCharacterId !== 'pyromancer') {
+                    damagePlayer(damage * 1.5, "Explosion Blast");
                 }
 
                 oilSlicks.forEach(oil => {
@@ -3850,7 +3962,7 @@
         function startWeaponReload(w) {
             if (!w.mag || w.reloading) return;
             w.reloading = true;
-            document.getElementById('reload-status').innerText = "PRZEŁADOWANIE...";
+            document.getElementById('reload-status').innerText = "RELOADING...";
             setTimeout(() => {
                 w.currentMag = Math.min(getWeaponMag(w), Math.ceil(w.ammo));
                 w.reloading = false;
@@ -3908,7 +4020,6 @@
 
         function fireWeaponProjectiles(w, spawnPos, direction) {
             const baseDamage = getWeaponDamage(w);
-            // Granatnik — pocisk wybuchowy zamiast kuli
             if (w.type === 'explosive') {
                 const expBullet = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), new THREE.MeshBasicMaterial({ color: w.color }));
                 expBullet.position.copy(spawnPos);
@@ -3988,7 +4099,7 @@
                 const metrics = computeEnemyHitMetrics(e);
                 const footY = e.position.y + (metrics.footOffset || 0);
                 const totalHeight = metrics.totalHeight;
-                const bodyRadius = isBoss ? Math.max(1.55, metrics.bodyRadius) : metrics.bodyRadius;
+                const bodyRadius = isBoss ? Math.max(1.55, metrics.bodyRadius) : Math.min(0.75, metrics.bodyRadius);
                 const bodyCenterY = footY + totalHeight * 0.45;
                 const headCenterY = footY + totalHeight * 0.82;
                 return {
@@ -4000,8 +4111,8 @@
             }
 
             const typeScale = e.userData.type === 'bruiser' ? 1.15 : (e.userData.type === 'kamikaze' ? 0.85 : 1.0);
-            const bodyRadius = isBoss ? 1.55 : 1.75 * typeScale;
-            const totalHeight = isBoss ? 4.2 : (e.userData.type === 'bruiser' ? 3.4 : 2.85);
+            const bodyRadius = isBoss ? 1.55 : (e.userData.type === 'shield' ? 0.70 : 0.55 * typeScale);
+            const totalHeight = isBoss ? 4.2 : (e.userData.type === 'bruiser' ? 3.2 : 2.4);
             const footY = e.position.y;
             const bodyCenterY = footY + totalHeight * 0.45;
             const headCenterY = footY + totalHeight * 0.82;
@@ -4026,16 +4137,16 @@
         }
 
         function getEnemyFacingAngle(fromX, fromZ, toX, toZ) {
-            // Kąt obrotu wroga tak, aby patrzył na cel (gracza)
+            // Angle to face target (player)
             const dx = toX - fromX;
             const dz = toZ - fromZ;
-            return Math.atan2(-dx, -dz);
+            return Math.atan2(dx, dz);
         }
 
         function isBulletBlockedByShield(e, segmentStart) {
             if (!e.userData.hasShield) return false;
 
-            const enemyForward = new THREE.Vector3(0, 0, -1).applyQuaternion(e.quaternion);
+            const enemyForward = new THREE.Vector3(0, 0, 1).applyQuaternion(e.quaternion);
             enemyForward.y = 0;
             if (enemyForward.lengthSq() < 0.0001) return true;
             enemyForward.normalize();
@@ -4045,7 +4156,6 @@
             if (toShooter.lengthSq() < 0.0001) return true;
             toShooter.normalize();
 
-            // Strzał z półkuli frontowej trafia w tarczę; od tyłu omija ją
             return enemyForward.dot(toShooter) > 0.35;
         }
 
@@ -4156,10 +4266,20 @@
             updateWeaponHud();
         }
 
-        function isObstacleCollision(x, z, radius = 0.8) {
+        function isObstacleCollision(x, z, radius = 0.8, feetY = 0) {
             for (let w of walls) {
                 if (x > w.position.x - CELL / 2 - radius && x < w.position.x + CELL / 2 + radius &&
                     z > w.position.z - CELL / 2 - radius && z < w.position.z + CELL / 2 + radius) return true;
+            }
+            // Prevent walking onto ramps from sides/back if feet height is significantly lower than ramp height
+            for (let p of platforms) {
+                const halfCell = CELL / 2;
+                if (x > p.position.x - halfCell - radius && x < p.position.x + halfCell + radius &&
+                    z > p.position.z - halfCell - radius && z < p.position.z + halfCell + radius) {
+                    const relZ = Math.max(0, Math.min(1, 1 - (z - (p.position.z - halfCell)) / CELL));
+                    const rampH = relZ * 1.8;
+                    if (rampH - feetY > 0.45) return true;
+                }
             }
             return false;
         }
@@ -4208,18 +4328,20 @@
         }
 
         function isBlocked(x, z, radius = 0.8, ignoreVoid = false, bodyY = 1.7, ignoreJumpableFences = false) {
-            return isObstacleCollision(x, z, radius) || isBarrelCollision(x, z, radius, bodyY) || checkFenceCollision(x, z, radius, bodyY, ignoreJumpableFences) || (!ignoreVoid && isVoid(x, z));
+            const feetY = bodyY - 1.7;
+            return isObstacleCollision(x, z, radius, feetY) || isBarrelCollision(x, z, radius, bodyY) || checkFenceCollision(x, z, radius, bodyY, ignoreJumpableFences) || (!ignoreVoid && isVoid(x, z));
         }
 
         function isCannonBlocked(x, z) {
-            const cannonBodyY = 1.7 + getPlatformHeightAt(x, z);
-            return isObstacleCollision(x, z, 0.85) ||
+            const cannonFloorY = getPlatformHeightAt(x, z);
+            const cannonBodyY = 1.7 + cannonFloorY;
+            return isObstacleCollision(x, z, 0.85, cannonFloorY) ||
                 isBarrelCollision(x, z, 0.85, cannonBodyY) ||
                 checkFenceCollision(x, z, 0.85, cannonBodyY) ||
                 isVoid(x, z);
         }
 
-        function getPlatformHeightAt(x, z) {
+        function getPlatformHeightAt(x, z, feetY = 0) {
             for (let p of platforms) {
                 const halfCell = CELL / 2;
                 if (x > p.position.x - halfCell && x < p.position.x + halfCell &&
@@ -4227,7 +4349,9 @@
 
                     const relZ = (z - (p.position.z - halfCell)) / CELL;
                     const clampedZ = Math.max(0, Math.min(1, 1 - relZ));
-                    return clampedZ * 1.8;
+                    const rampH = clampedZ * 1.8;
+                    if (rampH - feetY > 0.45) return 0;
+                    return rampH;
                 }
             }
             return 0;
@@ -4238,19 +4362,75 @@
             setTimeout(() => document.getElementById('damage-flash').style.opacity = "0", 50);
         }
 
-        // --- AI WROGÓW — pathfinding ze ślizganiem po ścianach ---
+        /* --- DEV CONSOLE COMMAND HANDLER --- */
+        let devConsoleOpen = false;
+        function toggleDevConsole() {
+            devConsoleOpen = !devConsoleOpen;
+            const el = document.getElementById('dev-console');
+            if (devConsoleOpen) {
+                el.style.display = 'flex';
+                document.exitPointerLock();
+                const input = document.getElementById('dev-console-input');
+                if (input) { input.value = ''; input.focus(); }
+            } else {
+                el.style.display = 'none';
+                if (gameStarted && !isPaused && !inShop && !stats.dead) {
+                    document.body.requestPointerLock();
+                }
+            }
+        }
+
+        function handleConsoleCommand(cmdStr) {
+            if (!cmdStr) return;
+            const cmd = cmdStr.trim().toLowerCase();
+            const out = document.getElementById('dev-console-output');
+            const log = (msg) => { out.innerText += '\n' + msg; out.scrollTop = out.scrollHeight; };
+            log('> ' + cmdStr);
+
+            if (cmd === 'god' || cmd === 'godmode') {
+                stats.godMode = !stats.godMode;
+                log(`GOD MODE: ${stats.godMode ? 'ENABLED' : 'DISABLED'}`);
+            } else if (cmd.startsWith('add score') || cmd.startsWith('score add') || cmd.startsWith('addscore')) {
+                const parts = cmd.split(' ');
+                const val = parseInt(parts[parts.length - 1]) || 5000;
+                stats.score += val;
+                document.getElementById('score').innerText = stats.score;
+                log(`ADDED ${val} SCORE! CURRENT SCORE: ${stats.score}`);
+            } else if (cmd === 'heal') {
+                stats.hp = stats.maxHp;
+                document.getElementById('hp').innerText = Math.ceil(stats.hp);
+                log(`HEALTH RESTORED TO ${stats.maxHp}!`);
+            } else if (cmd === 'killall') {
+                let count = enemies.length;
+                enemies.forEach(e => { e.userData.hp = 0; });
+                log(`KILLED ALL ${count} ENEMIES!`);
+            } else if (cmd.startsWith('wave ')) {
+                const num = parseInt(cmd.split(' ')[1]) || 1;
+                startWave(num);
+                log(`JUMPED TO WAVE ${num}`);
+            } else if (cmd === 'noclip') {
+                stats.noclip = !stats.noclip;
+                log(`NOCLIP: ${stats.noclip ? 'ENABLED' : 'DISABLED'}`);
+            } else if (cmd === 'help') {
+                log("AVAILABLE CHEATS:\n- god (toggle invincibility)\n- add score <amount> / score add <amount>\n- heal (restore HP)\n- killall (kill current wave)\n- wave <number>\n- noclip");
+            } else {
+                log(`UNKNOWN COMMAND: '${cmdStr}'. TYPE 'help' FOR CHEATS.`);
+            }
+        }
+
+        // AI ENEMIES — pathfinding with wall-sliding
         function moveEnemySmart(e, targetPos, delta, forceAggro = false) {
             const slowMult = e.userData.slowTimer > 0 ? 0.45 : 1.0;
             const speed = (e.userData.speed * (forceAggro ? 1.3 : 1.0) * slowMult) * delta;
             const enemyRadius = e.userData.isBoss ? 1.35 : 0.75;
 
-            // Unstuck mechanism: if enemy is stuck inside a wall, push out along cardinal directions
-            if (isObstacleCollision(e.position.x, e.position.z, enemyRadius * 0.75)) {
+            // Unstuck mechanism
+            if (isObstacleCollision(e.position.x, e.position.z, enemyRadius * 0.75, e.position.y)) {
                 const pushAngles = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
                 for (let a of pushAngles) {
                     const px = e.position.x + Math.sin(a) * 0.45;
                     const pz = e.position.z + Math.cos(a) * 0.45;
-                    if (!isObstacleCollision(px, pz, enemyRadius * 0.75)) {
+                    if (!isObstacleCollision(px, pz, enemyRadius * 0.75, e.position.y)) {
                         e.position.x = px;
                         e.position.z = pz;
                         break;
@@ -4270,12 +4450,10 @@
             let tryX = e.position.x + desiredDir.x * speed;
             let tryZ = e.position.z + desiredDir.z * speed;
 
-            // Test full step towards target
             if (!isBlocked(tryX, tryZ, enemyRadius, !!e.userData.canFly, e.position.y, !!e.userData.canFly)) {
                 e.position.x = tryX;
                 e.position.z = tryZ;
             } else {
-                // Wall sliding: test X-axis and Z-axis independently to slide along wall surface
                 let canX = !isBlocked(tryX, e.position.z, enemyRadius, !!e.userData.canFly, e.position.y, !!e.userData.canFly);
                 let canZ = !isBlocked(e.position.x, tryZ, enemyRadius, !!e.userData.canFly, e.position.y, !!e.userData.canFly);
 
@@ -4284,7 +4462,6 @@
                 } else if (canZ && !canX) {
                     e.position.z = tryZ;
                 } else {
-                    // Try 12 alternative angles around circle to navigate corners cleanly
                     let bestAngle = null;
                     let bestDot = -Infinity;
                     const baseAngle = Math.atan2(desiredDir.x, desiredDir.z);
@@ -4369,11 +4546,11 @@
             const relativeAngle = normalizeAngle(targetAngle - cameraForwardAngle);
 
             document.getElementById('enemy-compass-arrow').style.transform = `rotate(${relativeAngle}rad)`;
-            document.getElementById('enemy-compass-text').innerText = `NAJBLIŻSZY: ${Math.max(1, Math.round(nearestDist))}m`;
+            document.getElementById('enemy-compass-text').innerText = `NEAREST: ${Math.max(1, Math.round(nearestDist))}m`;
             compass.style.display = 'flex';
         }
 
-        // Kończy grę — efekt audio śmierci, podsumowanie, nagroda w rdzeniach
+        // Ends game — death audio effect, summary, cause of death
         function triggerDeath(reason) {
             if (stats.dead) return;
             stats.dead = true;
@@ -4389,13 +4566,14 @@
                 metaState.currency += earned;
                 saveMetaState();
             }
-            document.getElementById('death-reason').innerText = reason;
+            const cause = stats.lastDamageSource ? `${reason} (KILLED BY: ${stats.lastDamageSource})` : reason;
+            document.getElementById('death-reason').innerText = cause;
             document.getElementById('finalScore').innerText = stats.scoreEarned || stats.score;
             document.getElementById('finalWave').innerText = wavesSurvived;
             document.getElementById('finalKills').innerText = stats.kills;
             document.getElementById('finalCurrency').innerText = earned;
             document.getElementById('totalCurrency').innerText = metaState ? metaState.currency : earned;
-            document.getElementById('death-summary').innerHTML += `<br>CELNOŚĆ: ${accuracy}%`;
+            document.getElementById('death-summary').innerHTML = `FINAL SCORE: ${stats.score}<br>WAVES SURVIVED: ${wavesSurvived}<br>ENEMIES KILLED: ${stats.kills}<br>ACCURACY: ${accuracy}%`;
             document.getElementById('death').style.display = 'flex';
             document.exitPointerLock();
         }
