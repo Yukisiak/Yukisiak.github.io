@@ -1895,9 +1895,56 @@
         const SIZE = CELL * GRID;
 
         const BIOMES = [
-            { name: "CYBER-CITY", bg: 0x05070a, fog: 0x05070a, floor: 0x0d1117, wall: 0x1f2638 },
-            { name: "SPACE STATION", bg: 0x02040d, fog: 0x02040d, floor: 0x181c28, wall: 0x2d3748 },
-            { name: "VOLCANO CORE", bg: 0x0d0202, fog: 0x0d0202, floor: 0x1a0a0a, wall: 0x3d1414 }
+            {
+                name: "CYBER-CITY",
+                bg: 0x05070a, fog: 0x05070a, fogNear: 5, fogFar: 58,
+                floor: 0x0d1117, wall: 0x1f2638, platform: 0x00aaff, voidColor: 0x000000,
+                barrelColor: 0xff1100, oilColor: 0x111111, accent: 0x00f0ff, crate: 0x222a38, generator: 0xff00ff,
+                layout: { wall: 0.13, void: 0.05, ramp: 0.05, barrel: 0.05, oil: 0.05, pillar: 0.05, crate: 0.05, generator: 0.03 },
+                enemyBias: ['normal', 'shield', 'spitter'], biasChance: 0.20,
+                flyingChance: 0.22, enemyHpMult: 1.0, enemySpeedMult: 1.0, waveSizeMult: 1.0, maxEnemiesBonus: 0, spawnIntervalMult: 1.0,
+                powerupInterval: 14000, barrelRadius: 6.0, barrelDamage: 40
+            },
+            {
+                name: "WASTE FOUNDRY",
+                bg: 0x120604, fog: 0x120604, fogNear: 4, fogFar: 48,
+                floor: 0x1f1612, wall: 0x3a2520, platform: 0xff7a18, voidColor: 0x080202,
+                barrelColor: 0xff3300, oilColor: 0x1a0702, accent: 0xffaa00, crate: 0x3a2a20, generator: 0xff5500,
+                layout: { wall: 0.12, void: 0.04, ramp: 0.04, barrel: 0.10, oil: 0.09, pillar: 0.04, crate: 0.05, generator: 0.03 },
+                enemyBias: ['kamikaze', 'bruiser', 'fast'], biasChance: 0.35,
+                flyingChance: 0.18, enemyHpMult: 1.08, enemySpeedMult: 1.04, waveSizeMult: 1.05, maxEnemiesBonus: 2, spawnIntervalMult: 0.95,
+                powerupInterval: 15000, barrelRadius: 6.8, barrelDamage: 48
+            },
+            {
+                name: "VOID GARDEN",
+                bg: 0x030112, fog: 0x030112, fogNear: 4, fogFar: 42,
+                floor: 0x111527, wall: 0x2a2450, platform: 0x6f7dff, voidColor: 0x020007,
+                barrelColor: 0xa855ff, oilColor: 0x0a0715, accent: 0xcc88ff, crate: 0x22284b, generator: 0x8a2be2,
+                layout: { wall: 0.10, void: 0.10, ramp: 0.08, barrel: 0.04, oil: 0.04, pillar: 0.05, crate: 0.04, generator: 0.04 },
+                enemyBias: ['stalker', 'dodger', 'spitter'], biasChance: 0.38,
+                flyingChance: 0.46, enemyHpMult: 0.95, enemySpeedMult: 1.12, waveSizeMult: 1.0, maxEnemiesBonus: 3, spawnIntervalMult: 0.90,
+                powerupInterval: 12500, barrelRadius: 5.6, barrelDamage: 36
+            },
+            {
+                name: "FROST RELAY",
+                bg: 0x061016, fog: 0x061016, fogNear: 6, fogFar: 64,
+                floor: 0x14242c, wall: 0x284653, platform: 0x9fe8ff, voidColor: 0x02080c,
+                barrelColor: 0x7bdcff, oilColor: 0x0a1820, accent: 0xc8f7ff, crate: 0x263b44, generator: 0x66ccff,
+                layout: { wall: 0.16, void: 0.04, ramp: 0.07, barrel: 0.04, oil: 0.03, pillar: 0.06, crate: 0.07, generator: 0.03 },
+                enemyBias: ['shield', 'spitter', 'buffer'], biasChance: 0.34,
+                flyingChance: 0.24, enemyHpMult: 1.15, enemySpeedMult: 0.90, waveSizeMult: 0.95, maxEnemiesBonus: 0, spawnIntervalMult: 1.08,
+                powerupInterval: 11000, barrelRadius: 5.4, barrelDamage: 34
+            },
+            {
+                name: "BLOOD LAB",
+                bg: 0x110308, fog: 0x110308, fogNear: 3, fogFar: 46,
+                floor: 0x1d0b12, wall: 0x3d1824, platform: 0xff2f6d, voidColor: 0x060104,
+                barrelColor: 0xff004d, oilColor: 0x18040a, accent: 0xff3366, crate: 0x321722, generator: 0xff0066,
+                layout: { wall: 0.14, void: 0.06, ramp: 0.04, barrel: 0.06, oil: 0.05, pillar: 0.04, crate: 0.06, generator: 0.05 },
+                enemyBias: ['necromancer', 'buffer', 'bruiser'], biasChance: 0.42,
+                flyingChance: 0.30, enemyHpMult: 1.25, enemySpeedMult: 1.02, waveSizeMult: 1.15, maxEnemiesBonus: 6, spawnIntervalMult: 0.88,
+                powerupInterval: 16000, barrelRadius: 6.2, barrelDamage: 44
+            }
         ];
 
         let scene, camera, renderer, clock, raycaster, floorMesh;
@@ -2028,35 +2075,68 @@
         let floatingDamageNumbers = [];
 
         const CHARACTER_CATALOG = [
-            { id: 'rookie', name: 'ROOKIE', cost: 0, weapon: 'pistol', desc: 'Standard Operative. Q: Tactical Frag Grenade, Passive: +15 HP & +20% Speed.' },
-            { id: 'gunner', name: 'GUNNER', cost: 80, weapon: 'rifle', desc: 'Q: Overclock (Extreme Fire Rate), Passive: +25% Ammo Capacity.' },
-            { id: 'breacher', name: 'BREACHER', cost: 110, weapon: 'shotgun', desc: 'Q: Energy Shield, Passive: Armor & Extra Pellets.' },
-            { id: 'pyromancer', name: 'PYROMANCER', cost: 140, weapon: 'wand', desc: 'Q: 360° Flame Wave, Passive: Burn enemies on shot.' },
-            { id: 'frost', name: 'FROST', cost: 150, weapon: 'ice_staff', desc: 'Q: Frost Blizzard (Freezes in place), Passive: Slow enemies on hit.' },
-            { id: 'railrunner', name: 'RAILRUNNER', cost: 190, weapon: 'railgun', desc: 'Q: Cyber-Blink Teleport, Passive: Natural bullet piercing.' },
-            { id: 'demolition', name: 'DEMOLITION', cost: 180, weapon: 'grenade', desc: 'Q: EMP Shockwave Grenade, Passive: Immunity to self explosion.' },
-            { id: 'vampire', name: 'VAMPIRE', cost: 210, weapon: 'boomerang', desc: 'Q: Blood Nova (HP Drain), Passive: Built-in Vampire Leech.' }
+            { id: 'rookie', name: 'ROOKIE', achievement: null, desc: 'Standard Operative. Q: Frag Grenade, Passive: +15 HP & +20% Speed.' },
+            { id: 'gunner', name: 'GUNNER', achievement: { stat: 'totalKills', target: 150, label: 'Kill 150 Enemies' }, desc: 'Q: Overclock (Extreme Fire Rate), Passive: +25% Ammo.' },
+            { id: 'breacher', name: 'BREACHER', achievement: { stat: 'maxWaveCleared', target: 8, label: 'Clear Wave 8' }, desc: 'Q: Energy Shield, Passive: Armor & Extra Pellets.' },
+            { id: 'pyromancer', name: 'PYROMANCER', achievement: { stat: 'oilIgnited', target: 75, label: 'Ignite 75 Oil Slicks' }, desc: 'Q: 360° Flame Wave, Passive: Burn enemies on hit.' },
+            { id: 'frost', name: 'FROST', achievement: { stat: 'powerupsCollected', target: 35, label: 'Collect 35 Power-Ups' }, desc: 'Q: Frost Blizzard (Freezes in place), Passive: Slow on hit.' },
+            { id: 'railrunner', name: 'RAILRUNNER', achievement: { stat: 'headshots', target: 250, label: 'Land 250 Headshots' }, desc: 'Q: Cyber-Blink Teleport, Passive: Natural Piercing.' },
+            { id: 'demolition', name: 'DEMOLITION', achievement: { stat: 'barrelsDestroyed', target: 200, label: 'Destroy 200 Barrels' }, desc: 'Q: EMP Shockwave Grenade, Passive: Self-explosion immunity.' },
+            { id: 'vampire', name: 'VAMPIRE', achievement: { stat: 'hpPickupsCollected', target: 200, label: 'Collect 200 Health Packs' }, desc: 'Q: Blood Nova (HP Drain), Passive: Built-in Vampire Leech.' }
         ];
 
         // --- 7. META-STAN I ZAPIS (localStorage) ---
         function loadMetaState() {
             try {
                 const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+                const defaultStats = {
+                    totalKills: 0,
+                    barrelsDestroyed: 0,
+                    hpPickupsCollected: 0,
+                    oilIgnited: 0,
+                    powerupsCollected: 0,
+                    headshots: 0,
+                    maxWaveCleared: 0
+                };
                 return {
                     currency: parsed.currency || 0,
                     unlockedCharacters: parsed.unlockedCharacters || ['rookie'],
                     selectedCharacter: parsed.selectedCharacter || 'rookie',
                     sensitivity: parsed.sensitivity || 1.0,
-                    fov: parsed.fov || 75
+                    fov: parsed.fov || 75,
+                    stats: Object.assign(defaultStats, parsed.stats || {})
                 };
             } catch (err) {
-                return { currency: 0, unlockedCharacters: ['rookie'], selectedCharacter: 'rookie', sensitivity: 1.0, fov: 75 };
+                return {
+                    currency: 0,
+                    unlockedCharacters: ['rookie'],
+                    selectedCharacter: 'rookie',
+                    sensitivity: 1.0,
+                    fov: 75,
+                    stats: { totalKills: 0, barrelsDestroyed: 0, hpPickupsCollected: 0, oilIgnited: 0, powerupsCollected: 0, headshots: 0, maxWaveCleared: 0 }
+                };
             }
         }
 
         function saveMetaState() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(metaState));
             updateMetaReadouts();
+        }
+
+        function updateAchievementProgress(statKey, increment = 1) {
+            if (!metaState.stats) metaState.stats = {};
+            metaState.stats[statKey] = (metaState.stats[statKey] || 0) + increment;
+
+            // Auto-unlock character if achievement met!
+            CHARACTER_CATALOG.forEach(character => {
+                if (character.achievement && character.achievement.stat === statKey) {
+                    const currentVal = metaState.stats[statKey] || 0;
+                    if (currentVal >= character.achievement.target && !metaState.unlockedCharacters.includes(character.id)) {
+                        metaState.unlockedCharacters.push(character.id);
+                    }
+                }
+            });
+            saveMetaState();
         }
 
         function getWeaponIndexById(id) {
@@ -2451,24 +2531,43 @@
                 const selected = metaState.selectedCharacter === character.id;
                 const card = document.createElement('div');
                 card.className = `character-card ${selected ? 'selected-card' : ''}`;
-                const buttonText = unlocked ? (selected ? 'SELECTED' : 'SELECT') : `UNLOCK (${character.cost} CORES)`;
-                const disabled = (!unlocked && metaState.currency < character.cost) || selected;
+
+                let statusHtml = '';
+                if (unlocked) {
+                    statusHtml = `<div style="color:#00ffaa; font-weight:bold; margin-bottom:8px;">UNLOCKED ✓</div>`;
+                } else if (character.achievement) {
+                    const currentVal = (metaState.stats && metaState.stats[character.achievement.stat]) || 0;
+                    const targetVal = character.achievement.target;
+                    const percent = Math.min(100, Math.floor((currentVal / targetVal) * 100));
+                    statusHtml = `
+                        <div style="color:#ffaa00; font-size:0.85rem; margin-bottom:6px;">
+                            <strong>UNLOCK:</strong> ${character.achievement.label}<br>
+                            PROGRESS: ${currentVal} / ${targetVal} (${percent}%)
+                            <div style="background:#222; border:1px solid #ffaa00; height:8px; border-radius:4px; margin-top:4px; overflow:hidden;">
+                                <div style="background:#ffaa00; width:${percent}%; height:100%;"></div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                const buttonText = unlocked ? (selected ? 'SELECTED' : 'SELECT') : 'LOCKED (ACHIEVEMENT)';
+                const disabled = !unlocked || selected;
+
                 card.innerHTML = `
                     <h3>${character.name}</h3>
-                    <p>${character.desc}<br><br><strong>Start:</strong> ${getWeaponName(character.weapon)}</p>
+                    <p>${character.desc}</p>
+                    ${statusHtml}
                     <button class="shop-btn" style="width:100%;" ${disabled ? 'disabled' : ''}>${buttonText}</button>
                 `;
-                card.querySelector('button').onclick = () => {
-                    if (!unlocked) {
-                        if (metaState.currency < character.cost) return;
-                        metaState.currency -= character.cost;
-                        metaState.unlockedCharacters.push(character.id);
-                    }
-                    metaState.selectedCharacter = character.id;
-                    selectedCharacterId = character.id;
-                    saveMetaState();
-                    renderCharacterUnlocks();
-                };
+
+                if (unlocked) {
+                    card.querySelector('button').onclick = () => {
+                        metaState.selectedCharacter = character.id;
+                        selectedCharacterId = character.id;
+                        saveMetaState();
+                        renderCharacterUnlocks();
+                    };
+                }
                 grid.appendChild(card);
             });
         }
@@ -2642,6 +2741,8 @@
         function awardScore(amount) {
             stats.score += amount;
             stats.scoreEarned += amount;
+            stats.kills++;
+            updateAchievementProgress('totalKills', 1);
         }
 
         function randomSample(list, count) {
@@ -2806,10 +2907,32 @@
             return BIOMES[index];
         }
 
+        function pickBiomeMapTile(biome, rand) {
+            const layout = biome.layout || {};
+            const chances = [
+                { tile: 1, key: 'wall' },
+                { tile: 3, key: 'void' },
+                { tile: 4, key: 'ramp' },
+                { tile: 5, key: 'barrel' },
+                { tile: 6, key: 'oil' },
+                { tile: 7, key: 'pillar' },
+                { tile: 8, key: 'crate' },
+                { tile: 9, key: 'generator' }
+            ];
+            let threshold = 0;
+            for (let entry of chances) {
+                threshold += layout[entry.key] || 0;
+                if (rand < threshold) return entry.tile;
+            }
+            return 0;
+        }
+
         function updateBiomeTheme() {
             const biome = getCurrentBiome();
             scene.background = new THREE.Color(biome.bg);
             scene.fog.color = new THREE.Color(biome.fog);
+            scene.fog.near = biome.fogNear || 5;
+            scene.fog.far = biome.fogFar || 55;
             if (floorMesh) floorMesh.material.color.setHex(biome.floor);
             document.getElementById('biome-tag').innerText = `BIOM: ${biome.name}`;
         }
@@ -2843,6 +2966,7 @@
             barrels = []; oilSlicks = [];
 
             mapGrid = Array.from({ length: GRID }, () => Array(GRID).fill(0));
+            const currentBiome = getCurrentBiome();
 
             for (let i = 0; i < GRID; i++) {
                 mapGrid[0][i] = 1;
@@ -2856,19 +2980,11 @@
                     if (x >= 6 && x <= 9 && y >= 6 && y <= 9) continue;
 
                     const rand = Math.random();
-                    if (rand < 0.14) mapGrid[y][x] = 1;      // Wall block
-                    else if (rand < 0.20) mapGrid[y][x] = 3; // Void hole
-                    else if (rand < 0.25) mapGrid[y][x] = 4; // Ramp
-                    else if (rand < 0.30) mapGrid[y][x] = 5; // Barrel
-                    else if (rand < 0.35) mapGrid[y][x] = 6; // Oil slick
-                    else if (rand < 0.40) mapGrid[y][x] = 7; // Neon Pillar
-                    else if (rand < 0.45) mapGrid[y][x] = 8; // Tech Crate
-                    else if (rand < 0.48) mapGrid[y][x] = 9; // Generator Core
+                    mapGrid[y][x] = pickBiomeMapTile(currentBiome, rand);
                 }
             }
 
             const offset = (GRID * CELL) / 2 - CELL / 2;
-            const currentBiome = getCurrentBiome();
 
             const wallMat = new THREE.MeshStandardMaterial({
                 map: textures.wallPattern,
@@ -2878,8 +2994,8 @@
                 emissive: currentBiome.wall,
                 emissiveIntensity: 0.15
             });
-            const platformMat = new THREE.MeshStandardMaterial({ color: 0x00aaff, roughness: 0.2, metalness: 0.6 });
-            const voidMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const platformMat = new THREE.MeshStandardMaterial({ color: currentBiome.platform, roughness: 0.2, metalness: 0.6 });
+            const voidMat = new THREE.MeshBasicMaterial({ color: currentBiome.voidColor || 0x000000 });
 
             if (floorMesh) {
                 floorMesh.material.map = textures.floorPattern;
@@ -2926,13 +3042,14 @@
         }
 
         function spawnNeonPillar(x, z) {
+            const biome = getCurrentBiome();
             const group = new THREE.Group();
             const colMat = new THREE.MeshStandardMaterial({ color: 0x111622, metalness: 0.8, roughness: 0.2 });
             const column = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 5.5, 8), colMat);
             column.position.y = 2.75;
             group.add(column);
 
-            const ringMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+            const ringMat = new THREE.MeshBasicMaterial({ color: biome.accent || 0x00f0ff });
             const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.06, 8, 16), ringMat);
             ring1.rotation.x = Math.PI / 2; ring1.position.y = 1.8;
             const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.06, 8, 16), ringMat);
@@ -2945,8 +3062,9 @@
         }
 
         function spawnTechCrate(x, z) {
-            const mat = new THREE.MeshStandardMaterial({ color: 0x222a38, metalness: 0.6, roughness: 0.3 });
-            const seamMat = new THREE.MeshBasicMaterial({ color: 0xffa000 });
+            const biome = getCurrentBiome();
+            const mat = new THREE.MeshStandardMaterial({ color: biome.crate || 0x222a38, metalness: 0.6, roughness: 0.3 });
+            const seamMat = new THREE.MeshBasicMaterial({ color: biome.accent || 0xffa000 });
             const box = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.8, 2.2), mat);
             box.position.set(x, 0.9, z);
             const seam = new THREE.Mesh(new THREE.BoxGeometry(2.25, 0.1, 2.25), seamMat);
@@ -2956,9 +3074,10 @@
         }
 
         function spawnGeneratorCore(x, z) {
+            const biome = getCurrentBiome();
             const group = new THREE.Group();
             const baseMat = new THREE.MeshStandardMaterial({ color: 0x1a1a24, metalness: 0.9, roughness: 0.1 });
-            const coreMat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+            const coreMat = new THREE.MeshBasicMaterial({ color: biome.generator || 0xff00ff });
             const base = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.4, 1.2, 12), baseMat);
             base.position.y = 0.6;
             const orb = new THREE.Mesh(new THREE.SphereGeometry(0.7, 12, 12), coreMat);
@@ -2992,16 +3111,58 @@
         }
 
         function spawnBarrel(x, z) {
+            const biome = getCurrentBiome();
             const geo = new THREE.CylinderGeometry(0.7, 0.7, 1.8, 12);
-            const mat = new THREE.MeshStandardMaterial({ color: 0xff1100, metalness: 0.5, roughness: 0.3 });
+            const mat = new THREE.MeshStandardMaterial({ color: biome.barrelColor || 0xff1100, metalness: 0.5, roughness: 0.3 });
             const mesh = new THREE.Mesh(geo, mat);
             mesh.position.set(x, 0.9, z);
-            mesh.userData = { isBarrel: true, hp: 1 };
+            mesh.userData = {
+                isBarrel: true,
+                hp: 1,
+                blastRadius: biome.barrelRadius || 6.0,
+                blastDamage: biome.barrelDamage || 40
+            };
             mapObjectsGroup.add(mesh);
             barrels.push(mesh);
         }
 
+        function removeBarrel(barrel) {
+            const index = barrels.indexOf(barrel);
+            if (index === -1 || (barrel.userData && barrel.userData.exploded)) return false;
+            barrel.userData.exploded = true;
+            if (barrel.parent) barrel.parent.remove(barrel);
+            if (scene) scene.remove(barrel);
+            barrels.splice(index, 1);
+            return true;
+        }
+
+        function explodeBarrel(barrel, playerOwned = true) {
+            if (!barrel || !barrel.userData || barrel.userData.exploded) return false;
+            const pos = barrel.position.clone();
+            const radius = barrel.userData.blastRadius || 6.0;
+            const damage = barrel.userData.blastDamage || 40;
+            if (!removeBarrel(barrel)) return false;
+            if (playerOwned) addAchievementProgress('barrelsExploded', 1);
+            createExplosion(pos, radius, damage, playerOwned);
+            return true;
+        }
+
+        function getBarrelHitBySegment(start, end, padding = 0.95) {
+            let closestBarrel = null;
+            let closestDist = Infinity;
+            for (let barrel of barrels) {
+                if (!barrel || (barrel.userData && barrel.userData.exploded)) continue;
+                const dist = distancePointToSegment(barrel.position, start, end);
+                if (dist < padding && dist < closestDist) {
+                    closestDist = dist;
+                    closestBarrel = barrel;
+                }
+            }
+            return closestBarrel;
+        }
+
         function spawnOilSlick(x, z) {
+            const biome = getCurrentBiome();
             const shape = new THREE.Shape();
             const pointsCount = 10;
             const baseRadius = 1.8;
@@ -3018,7 +3179,7 @@
             shape.closePath();
 
             const geo = new THREE.ShapeGeometry(shape);
-            const mat = new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.DoubleSide });
+            const mat = new THREE.MeshBasicMaterial({ color: biome.oilColor || 0x111111, side: THREE.DoubleSide });
             const mesh = new THREE.Mesh(geo, mat);
             mesh.rotation.x = -Math.PI / 2;
             mesh.position.set(x, 0.02, z);
@@ -3032,6 +3193,7 @@
             oil.userData.isOnFire = true;
             oil.userData.fireTimer = 5.0;
             oil.material.color.setHex(0xff3300);
+            updateAchievementProgress('oilIgnited', 1);
         }
 
         function removeOilSlickAt(index) {
@@ -3649,11 +3811,11 @@
             ctx.fillRect(2, 2, 124, 12);
 
             const texture = new THREE.CanvasTexture(canvas);
-            // depthTest: false ensures HP bar renders on top of enemy head mesh without clipping!
-            const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false, transparent: true });
+            // depthTest: true ensures HP bar is NOT visible through walls!
+            const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: true, depthWrite: false, transparent: true });
             const sprite = new THREE.Sprite(spriteMat);
-            sprite.scale.set(1.8, 0.25, 1);
-            sprite.renderOrder = 999;
+            sprite.scale.set(2.2, 0.32, 1);
+            sprite.renderOrder = 10;
             sprite.userData.isHpBar = true;
             return sprite;
         }
@@ -4257,18 +4419,34 @@
 
         function getEnemyHitBounds(e) {
             const isBoss = !!e.userData.isBoss;
-            const typeScale = e.userData.type === 'bruiser' ? 1.3 : (e.userData.type === 'kamikaze' ? 0.85 : 1.0);
-            const bodyRadius = isBoss ? 1.6 : (e.userData.type === 'shield' ? 1.05 : 0.85 * typeScale);
-            const totalHeight = isBoss ? 4.2 : (e.userData.type === 'bruiser' ? 3.2 : 2.5);
+            let bodyRadius = 0.75;
+            let totalHeight = 2.4;
+
+            if (e.userData.usesExternalModel || isBoss) {
+                const metrics = computeEnemyHitMetrics(e);
+                bodyRadius = isBoss ? Math.max(1.65, metrics.bodyRadius) : Math.max(0.65, metrics.bodyRadius);
+                totalHeight = isBoss ? Math.max(4.2, metrics.totalHeight) : Math.max(2.0, metrics.totalHeight);
+            } else {
+                const typeScale = e.userData.type === 'bruiser' ? 1.3 : (e.userData.type === 'kamikaze' ? 0.75 : 1.0);
+                bodyRadius = isBoss ? 1.65 : (e.userData.type === 'shield' ? 0.95 : 0.65 * typeScale);
+                totalHeight = isBoss ? 4.2 : (e.userData.type === 'bruiser' ? 3.2 : (e.userData.type === 'spitter' ? 2.8 : 2.4));
+            }
 
             const footY = e.position.y;
             const bodyCenterY = footY + totalHeight * 0.5;
             const headCenterY = footY + totalHeight * 0.85;
+
+            // Dynamically position HP bar right above enemy's head
+            if (e.userData.hpBar) {
+                e.userData.hpBar.position.set(0, totalHeight + 0.45, 0);
+            }
+
             return {
                 bodyCenter: new THREE.Vector3(e.position.x, bodyCenterY, e.position.z),
                 headCenter: new THREE.Vector3(e.position.x, headCenterY, e.position.z),
                 bodyRadius: bodyRadius,
-                headRadius: bodyRadius * 0.85
+                headRadius: bodyRadius * 0.85,
+                totalHeight: totalHeight
             };
         }
 
@@ -4417,17 +4595,12 @@
                     z > w.position.z - CELL / 2 - radius && z < w.position.z + CELL / 2 + radius) return true;
             }
             // Ramps: only block entry from the 3 non-walkup sides (left, right, high end).
-            // The low end (front, where relZ ≈ 0 → rampH ≈ 0) is open for walking up.
-            // We block if the ramp height at the point of contact is taller than feetY + step threshold,
-            // AND the contact is not on the low-Z (walkup) edge of the ramp.
             for (let p of platforms) {
                 const halfCell = CELL / 2;
                 if (x > p.position.x - halfCell - radius && x < p.position.x + halfCell + radius &&
                     z > p.position.z - halfCell - radius && z < p.position.z + halfCell + radius) {
-                    // relZ: 0 = front/low end (walkable entry), 1 = back/high end
                     const relZ = Math.max(0, Math.min(1, (z - (p.position.z - halfCell)) / CELL));
-                    const rampH = (1 - relZ) * 1.8; // height at this Z position on the ramp
-                    // Only block if we'd need to step up more than 0.5m and we're not near the low entry edge
+                    const rampH = (1 - relZ) * 1.8;
                     if (rampH - feetY > 0.5 && relZ > 0.08) return true;
                 }
             }
@@ -4436,7 +4609,7 @@
 
         function getBarrelHeightAt(x, z) {
             for (let barrel of barrels) {
-                if (Math.hypot(x - barrel.position.x, z - barrel.position.z) < 0.82) {
+                if (Math.hypot(x - barrel.position.x, z - barrel.position.z) < 0.85) {
                     return 1.8;
                 }
             }
@@ -4444,6 +4617,8 @@
         }
 
         function isBarrelCollision(x, z, radius = 0.65, bodyY = 1.7) {
+            const feetY = bodyY - 1.7;
+            if (feetY >= 1.6) return false; // Standing on top of barrel
             for (let barrel of barrels) {
                 const barrelTopY = barrel.position.y + 0.9;
                 if (bodyY > barrelTopY + 0.75) continue;
@@ -4461,7 +4636,14 @@
         }
 
         function checkFenceCollision(x, z, radius = 0.6, bodyY = 1.7, ignoreJumpableFences = false) {
+            const feetY = bodyY - 1.7;
             for (let f of obstacles) {
+                const isCrate = f.geometry && f.geometry.type === 'BoxGeometry';
+                const isGen = f.geometry && f.geometry.type === 'CylinderGeometry';
+                const topH = isCrate ? 1.8 : (isGen ? 1.2 : 0.5);
+
+                if (feetY >= topH - 0.3) continue; // Player is standing/walking on top of crate/prop
+
                 if (f.userData && f.userData.jumpableFence && (ignoreJumpableFences || bodyY > 2.05)) continue;
                 const bbox = new THREE.Box3().setFromObject(f);
                 if (x > bbox.min.x - radius && x < bbox.max.x + radius &&
@@ -4491,17 +4673,37 @@
                 isVoid(x, z);
         }
 
-        function getPlatformHeightAt(x, z) {
+        function getPlatformHeightAt(x, z, feetY = 0) {
+            let maxHeight = 0;
+            // 1. Ramps
             for (let p of platforms) {
                 const halfCell = CELL / 2;
                 if (x > p.position.x - halfCell && x < p.position.x + halfCell &&
                     z > p.position.z - halfCell && z < p.position.z + halfCell) {
-                    // relZ: 0=front/low, 1=back/high
                     const relZ = Math.max(0, Math.min(1, (z - (p.position.z - halfCell)) / CELL));
-                    return (1 - relZ) * 1.8;
+                    maxHeight = Math.max(maxHeight, (1 - relZ) * 1.8);
                 }
             }
-            return 0;
+            // 2. Barrels
+            for (let barrel of barrels) {
+                if (Math.hypot(x - barrel.position.x, z - barrel.position.z) < 0.85) {
+                    if (feetY >= 1.4) maxHeight = Math.max(maxHeight, 1.8);
+                }
+            }
+            // 3. Obstacles (Crates, Generators, Fences)
+            for (let obs of obstacles) {
+                const isCrate = obs.geometry && obs.geometry.type === 'BoxGeometry';
+                const isGen = obs.geometry && obs.geometry.type === 'CylinderGeometry';
+                const obsHeight = isCrate ? 1.8 : (isGen ? 1.2 : 0.5);
+                const radius = isCrate ? 1.25 : (isGen ? 1.35 : 0.4);
+
+                if (Math.hypot(x - obs.position.x, z - obs.position.z) < radius) {
+                    if (feetY >= obsHeight - 0.45) {
+                        maxHeight = Math.max(maxHeight, obsHeight);
+                    }
+                }
+            }
+            return maxHeight;
         }
 
         function triggerDamageFlash() {
@@ -4772,7 +4974,8 @@
                             return;
                         }
                     } else {
-                        const platformY = Math.max(getPlatformHeightAt(camera.position.x, camera.position.z), getBarrelHeightAt(camera.position.x, camera.position.z));
+                        const feetY = camera.position.y - 1.7;
+                        const platformY = getPlatformHeightAt(camera.position.x, camera.position.z, feetY);
                         const baseFloorY = (isSliding ? 1.15 : 1.7) + platformY;
 
                         playerVelY -= GRAVITY * delta;
@@ -4858,6 +5061,7 @@
                     if (p.position.distanceTo(camera.position) < 1.5) {
                         if (p.userData.type === 'hp') {
                             stats.hp = Math.min(stats.maxHp, stats.hp + 25);
+                            updateAchievementProgress('hpPickupsCollected', 1);
                             updateHeartbeatState();
                         } else if (p.userData.type === 'powerup') {
                             activateBuff(p.userData.powerup, getPowerupDuration(p.userData.powerup));
@@ -5129,6 +5333,7 @@
                     const barrel = barrels[k];
                     if (distancePointToSegment(barrel.position, prevPosition, b.position) < 1.0) {
                         createExplosion(barrel.position, 6.0, 40, true);
+                        updateAchievementProgress('barrelsDestroyed', 1);
                         mapObjectsGroup.remove(barrel);
                         barrels.splice(k, 1);
                         scene.remove(b);
@@ -5168,7 +5373,10 @@
                         }
 
                         let damage = b.userData.damage;
-                        if (hitResult.headshot) damage *= 2.0;
+                        if (hitResult.headshot) {
+                            damage *= 2.0;
+                            updateAchievementProgress('headshots', 1);
+                        }
 
                         e.userData.hp -= damage;
                         stats.hits++;
