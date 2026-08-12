@@ -7,6 +7,12 @@
     <title>CYBER_DOOM_3D_BIOMES_&_TRAPS</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
     <!-- =====================================================================
          STYLE CSS — interfejs gry (HUD, menu, sklep, efekty wizualne)
          Każda sekcja odpowiada za wygląd konkretnego elementu UI.
@@ -1834,6 +1840,39 @@
                 return new THREE.CanvasTexture(canvas);
             };
 
+            // Sci-Fi Metallic Wall Canvas Texture
+            const wallCanvas = document.createElement('canvas'); wallCanvas.width = 256; wallCanvas.height = 256;
+            const wCtx = wallCanvas.getContext('2d');
+            wCtx.fillStyle = '#1a1f2c'; wCtx.fillRect(0, 0, 256, 256);
+            wCtx.strokeStyle = '#334466'; wCtx.lineWidth = 4;
+            wCtx.strokeRect(4, 4, 248, 248);
+            wCtx.strokeRect(12, 12, 232, 232);
+            wCtx.fillStyle = '#00f0ff';
+            wCtx.fillRect(20, 20, 16, 16); wCtx.fillRect(220, 20, 16, 16);
+            wCtx.fillRect(20, 220, 16, 16); wCtx.fillRect(220, 220, 16, 16);
+            wCtx.strokeStyle = '#00aaff'; wCtx.lineWidth = 2;
+            wCtx.beginPath();
+            wCtx.moveTo(28, 36); wCtx.lineTo(28, 220);
+            wCtx.moveTo(228, 36); wCtx.lineTo(228, 220);
+            wCtx.stroke();
+            const wallTex = new THREE.CanvasTexture(wallCanvas);
+            wallTex.wrapS = THREE.RepeatWrapping; wallTex.wrapT = THREE.RepeatWrapping;
+
+            // Cyber Grid Floor Canvas Texture
+            const floorCanvas = document.createElement('canvas'); floorCanvas.width = 256; floorCanvas.height = 256;
+            const fCtx = floorCanvas.getContext('2d');
+            fCtx.fillStyle = '#0a0d14'; fCtx.fillRect(0, 0, 256, 256);
+            fCtx.strokeStyle = '#00ffaa'; fCtx.lineWidth = 3;
+            fCtx.strokeRect(2, 2, 252, 252);
+            fCtx.strokeStyle = '#004433'; fCtx.lineWidth = 1;
+            for (let i = 32; i < 256; i += 32) {
+                fCtx.beginPath(); fCtx.moveTo(i, 0); fCtx.lineTo(i, 256); fCtx.stroke();
+                fCtx.beginPath(); fCtx.moveTo(0, i); fCtx.lineTo(256, i); fCtx.stroke();
+            }
+            const floorTex = new THREE.CanvasTexture(floorCanvas);
+            floorTex.wrapS = THREE.RepeatWrapping; floorTex.wrapT = THREE.RepeatWrapping;
+            floorTex.repeat.set(16, 16);
+
             return {
                 enemyNormal: createTex('#ff0055', '#000'),
                 bossTitan: createTex('#ff0000', '#ffff00'),
@@ -1843,7 +1882,9 @@
                 hp: new THREE.CanvasTexture(hCanvas),
                 powerInfinite: makeIcon('#00ffff', 'INF'),
                 powerDamage: makeIcon('#ffaa00', 'DMG'),
-                powerTime: makeIcon('#cc88ff', 'SLOW')
+                powerTime: makeIcon('#cc88ff', 'SLOW'),
+                wallPattern: wallTex,
+                floorPattern: floorTex
             };
         }
 
@@ -2826,9 +2867,21 @@
             const offset = (GRID * CELL) / 2 - CELL / 2;
             const currentBiome = getCurrentBiome();
 
-            const wallMat = new THREE.MeshStandardMaterial({ color: currentBiome.wall, roughness: 0.3, metalness: 0.4 });
+            const wallMat = new THREE.MeshStandardMaterial({
+                map: textures.wallPattern,
+                color: currentBiome.wall,
+                roughness: 0.3,
+                metalness: 0.5,
+                emissive: currentBiome.wall,
+                emissiveIntensity: 0.15
+            });
             const platformMat = new THREE.MeshStandardMaterial({ color: 0x00aaff, roughness: 0.2, metalness: 0.6 });
             const voidMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+
+            if (floorMesh) {
+                floorMesh.material.map = textures.floorPattern;
+                floorMesh.material.needsUpdate = true;
+            }
 
             for (let y = 0; y < GRID; y++) {
                 for (let x = 0; x < GRID; x++) {
@@ -3216,7 +3269,24 @@
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.toneMapping = THREE.ReinhardToneMapping;
+            renderer.toneMappingExposure = 1.1;
             document.body.appendChild(renderer.domElement);
+
+            try {
+                composer = new THREE.EffectComposer(renderer);
+                const renderPass = new THREE.RenderPass(scene, camera);
+                composer.addPass(renderPass);
+
+                bloomPass = new THREE.UnrealBloomPass(
+                    new THREE.Vector2(window.innerWidth, window.innerHeight),
+                    1.1, 0.3, 0.75
+                );
+                composer.addPass(bloomPass);
+            } catch (e) {
+                console.warn("Postprocessing bloom disabled:", e);
+                composer = null;
+            }
 
             scene.add(new THREE.AmbientLight(0xffffff, 0.95));
 
@@ -3239,6 +3309,15 @@
 
             // Keyboard input — movement WASD, jump, weapons, abilities, dev console
             window.onkeydown = (e) => {
+                // Prevent default browser shortcuts (Ctrl+W, Ctrl+S, Ctrl+Space, Tab, etc.)
+                if (e.ctrlKey || e.altKey || e.key === 'Tab') {
+                    if (['w', 'a', 's', 'd', 'r', 'f', 'v', 'q', ' ', 'tab'].includes(e.key.toLowerCase()) || e.ctrlKey) {
+                        if (e.key.toLowerCase() !== 'f12' && e.key.toLowerCase() !== 'f5') {
+                            e.preventDefault();
+                        }
+                    }
+                }
+
                 if (e.key === '`' || e.key === '~' || e.code === 'Backquote') {
                     e.preventDefault();
                     toggleDevConsole();
@@ -3704,6 +3783,7 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            if (composer) composer.setSize(window.innerWidth, window.innerHeight);
         }
 
         // Losuje typ wroga i dodaje go na mapę (w tym wroga z tarczą i kamikaze)
@@ -4012,13 +4092,44 @@
             )).normalize();
         }
 
+        function createImpactSparks(pos, colorHex = 0xffff00) {
+            for (let i = 0; i < 7; i++) {
+                const pMat = new THREE.MeshBasicMaterial({ color: colorHex });
+                const pMesh = new THREE.Mesh(new THREE.SphereGeometry(0.05, 4, 4), pMat);
+                pMesh.position.copy(pos);
+                const vel = new THREE.Vector3(
+                    (Math.random() - 0.5) * 8,
+                    (Math.random() * 5) + 1,
+                    (Math.random() - 0.5) * 8
+                );
+                particles.push({ mesh: pMesh, velocity: vel, life: 0.25, maxLife: 0.25 });
+                scene.add(pMesh);
+            }
+        }
+
+        function createImpactDecal(pos, normalVec = new THREE.Vector3(0, 1, 0)) {
+            const geo = new THREE.PlaneGeometry(0.3, 0.3);
+            const mat = new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.8, depthWrite: false });
+            const decal = new THREE.Mesh(geo, mat);
+            decal.position.copy(pos).add(normalVec.clone().multiplyScalar(0.015));
+            decal.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normalVec);
+            scene.add(decal);
+            setTimeout(() => { scene.remove(decal); }, 6000);
+        }
+
         function createPlayerBullet(w, spawnPos, direction, options = {}) {
             const size = options.size || (w.id === 'boomerang' ? 0.18 : 0.08);
+            const color = w.color || '#00ffff';
             const bullet = new THREE.Mesh(
                 new THREE.SphereGeometry(size, 8, 8),
-                new THREE.MeshLambertMaterial({ color: w.color || '#333333' })
+                new THREE.MeshBasicMaterial({ color: color })
             );
             bullet.position.copy(spawnPos);
+
+            // Dynamic Point Light attached to projectile
+            const bLight = new THREE.PointLight(color, 2.2, 6.5);
+            bullet.add(bLight);
+
             bullet.userData = {
                 velocity: direction.clone().multiplyScalar(options.speed || w.speed),
                 damage: options.damage || getWeaponDamage(w),
@@ -4112,32 +4223,18 @@
 
         function getEnemyHitBounds(e) {
             const isBoss = !!e.userData.isBoss;
-            if (e.userData.usesExternalModel || isBoss) {
-                const metrics = computeEnemyHitMetrics(e);
-                const footY = e.position.y + (metrics.footOffset || 0);
-                const totalHeight = metrics.totalHeight;
-                const bodyRadius = isBoss ? Math.max(1.55, metrics.bodyRadius) : Math.min(0.75, metrics.bodyRadius);
-                const bodyCenterY = footY + totalHeight * 0.45;
-                const headCenterY = footY + totalHeight * 0.82;
-                return {
-                    bodyCenter: new THREE.Vector3(e.position.x, bodyCenterY, e.position.z),
-                    headCenter: new THREE.Vector3(e.position.x, headCenterY, e.position.z),
-                    bodyRadius: bodyRadius,
-                    headRadius: bodyRadius * 0.92
-                };
-            }
+            const typeScale = e.userData.type === 'bruiser' ? 1.3 : (e.userData.type === 'kamikaze' ? 0.85 : 1.0);
+            const bodyRadius = isBoss ? 1.6 : (e.userData.type === 'shield' ? 1.05 : 0.85 * typeScale);
+            const totalHeight = isBoss ? 4.2 : (e.userData.type === 'bruiser' ? 3.2 : 2.5);
 
-            const typeScale = e.userData.type === 'bruiser' ? 1.15 : (e.userData.type === 'kamikaze' ? 0.85 : 1.0);
-            const bodyRadius = isBoss ? 1.55 : (e.userData.type === 'shield' ? 0.70 : 0.55 * typeScale);
-            const totalHeight = isBoss ? 4.2 : (e.userData.type === 'bruiser' ? 3.2 : 2.4);
             const footY = e.position.y;
-            const bodyCenterY = footY + totalHeight * 0.45;
-            const headCenterY = footY + totalHeight * 0.82;
+            const bodyCenterY = footY + totalHeight * 0.5;
+            const headCenterY = footY + totalHeight * 0.85;
             return {
                 bodyCenter: new THREE.Vector3(e.position.x, bodyCenterY, e.position.z),
                 headCenter: new THREE.Vector3(e.position.x, headCenterY, e.position.z),
                 bodyRadius: bodyRadius,
-                headRadius: bodyRadius * 0.92
+                headRadius: bodyRadius * 0.85
             };
         }
 
@@ -4154,31 +4251,25 @@
         }
 
         function getEnemyFacingAngle(fromX, fromZ, toX, toZ) {
-            // atan2(dx, dz) rotates local +Z toward the player.
-            // Add PI so the model's visual FRONT (-Z for most meshes) faces the player.
             const dx = toX - fromX;
             const dz = toZ - fromZ;
-            return Math.atan2(dx, dz) + Math.PI;
+            return Math.atan2(dx, dz);
         }
 
         function isBulletBlockedByShield(e, segmentStart) {
             if (!e.userData.hasShield) return false;
 
-            // enemyForward = direction the model's front face points in world space.
-            // rotation.y = atan2(dx,dz)+PI, so local +Z points AWAY from player.
-            // The shield is at local +Z (toward player) so we use -Z as the shield normal:
-            // shield blocks bullets whose source is in the +Z local arc (toward player side)
-            const shieldNormal = new THREE.Vector3(
-                -Math.sin(e.rotation.y), 0, -Math.cos(e.rotation.y)
-            ).normalize(); // points FROM enemy TOWARD player
+            // enemyFacing = direction from enemy to player (where shield faces)
+            const enemyFacing = new THREE.Vector3(Math.sin(e.rotation.y), 0, Math.cos(e.rotation.y)).normalize();
 
+            // toShooter = direction from enemy to bullet source (player)
             const toShooter = new THREE.Vector3().subVectors(segmentStart, e.position);
             toShooter.y = 0;
             if (toShooter.lengthSq() < 0.0001) return false;
             toShooter.normalize();
 
-            // Block if the shooter is in the shield's forward arc (dot > 0.3 = within ~72°)
-            return shieldNormal.dot(toShooter) > 0.3;
+            // Block if shooter is facing the shield (front arc, dot > 0.2)
+            return enemyFacing.dot(toShooter) > 0.2;
         }
 
         function getEnemyHitCenter(e) {
@@ -4997,6 +5088,8 @@
                 // Bullets pass over ramps — use bullet's Y position as feetY so ramps don't block aerial shots
                 const bulletFeetY = Math.max(0, b.position.y - 0.1);
                 if (isObstacleCollision(b.position.x, b.position.z, 0.2, bulletFeetY)) {
+                    createImpactSparks(b.position, 0xffff00);
+                    createImpactDecal(b.position);
                     scene.remove(b);
                     bullets.splice(i, 1);
                     continue;
@@ -5151,7 +5244,11 @@
             document.getElementById('enemies-left').innerText = isBossWave ? enemies.length : ((enemiesToSpawnInWave - enemiesSpawnedInWave) + enemies.length);
 
             updateEnemyCompass();
-            renderer.render(scene, camera);
+            if (composer) {
+                composer.render();
+            } else {
+                renderer.render(scene, camera);
+            }
         }
 
         document.getElementById('startBtn').onclick = () => {
