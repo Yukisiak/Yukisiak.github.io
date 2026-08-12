@@ -3268,7 +3268,7 @@
             raycaster = new THREE.Raycaster();
 
             renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
+            renderer.setPixelRatio(1.0); // Sztywne 1.0 dla ultra-płynnych 60-144 FPS
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.toneMapping = THREE.ReinhardToneMapping;
             renderer.toneMappingExposure = 1.1;
@@ -3279,12 +3279,12 @@
                 const renderPass = new THREE.RenderPass(scene, camera);
                 composer.addPass(renderPass);
 
-                // Bloom resolution set to half screen for massive performance boost
+                // Zmniejszona rozdzielczość bufora Bloom o połowę (half resolution bloom)
                 const bloomWidth = Math.floor(window.innerWidth / 2);
                 const bloomHeight = Math.floor(window.innerHeight / 2);
                 bloomPass = new THREE.UnrealBloomPass(
                     new THREE.Vector2(bloomWidth, bloomHeight),
-                    0.8, 0.25, 0.82
+                    0.85, 0.25, 0.8
                 );
                 composer.addPass(bloomPass);
             } catch (e) {
