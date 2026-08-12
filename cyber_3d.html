@@ -1519,7 +1519,8 @@
                 group.add(sh1); group.add(sh2);
 
                 const shieldMesh = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.5, 0.2), shieldMat);
-                shieldMesh.position.set(0, 1.3, -0.85);
+                // +Z = forward (toward player since rotation.y faces +Z at player)
+                shieldMesh.position.set(0, 1.3, 0.85);
                 shieldMesh.name = "shield";
                 group.add(shieldMesh);
 
@@ -4147,29 +4148,31 @@
         }
 
         function getEnemyFacingAngle(fromX, fromZ, toX, toZ) {
-            // Angle to face target (player)
+            // atan2(dx, dz) rotates local +Z toward the player.
+            // Add PI so the model's visual FRONT (-Z for most meshes) faces the player.
             const dx = toX - fromX;
             const dz = toZ - fromZ;
-            return Math.atan2(dx, dz);
+            return Math.atan2(dx, dz) + Math.PI;
         }
 
         function isBulletBlockedByShield(e, segmentStart) {
             if (!e.userData.hasShield) return false;
 
-            // enemyForward = the direction the enemy (and shield) is FACING
-            // Shield blocks bullets coming from the FRONT (where the shield faces)
-            // i.e. the shooter is in the same direction as enemyForward
-            const enemyForward = new THREE.Vector3(Math.sin(e.rotation.y), 0, Math.cos(e.rotation.y));
-            enemyForward.normalize();
+            // enemyForward = direction the model's front face points in world space.
+            // rotation.y = atan2(dx,dz)+PI, so local +Z points AWAY from player.
+            // The shield is at local +Z (toward player) so we use -Z as the shield normal:
+            // shield blocks bullets whose source is in the +Z local arc (toward player side)
+            const shieldNormal = new THREE.Vector3(
+                -Math.sin(e.rotation.y), 0, -Math.cos(e.rotation.y)
+            ).normalize(); // points FROM enemy TOWARD player
 
-            // toShooter = direction from enemy to bullet origin (player position)
             const toShooter = new THREE.Vector3().subVectors(segmentStart, e.position);
             toShooter.y = 0;
             if (toShooter.lengthSq() < 0.0001) return false;
             toShooter.normalize();
 
-            // Block if shooter is in the forward arc (shield side) — dot > 0.3 means within ~72 degree cone
-            return enemyForward.dot(toShooter) > 0.3;
+            // Block if the shooter is in the shield's forward arc (dot > 0.3 = within ~72°)
+            return shieldNormal.dot(toShooter) > 0.3;
         }
 
         function getEnemyHitCenter(e) {
@@ -4985,7 +4988,9 @@
                     continue;
                 }
 
-                if (isObstacleCollision(b.position.x, b.position.z, 0.2)) {
+                // Bullets pass over ramps — use bullet's Y position as feetY so ramps don't block aerial shots
+                const bulletFeetY = Math.max(0, b.position.y - 0.1);
+                if (isObstacleCollision(b.position.x, b.position.z, 0.2, bulletFeetY)) {
                     scene.remove(b);
                     bullets.splice(i, 1);
                     continue;
