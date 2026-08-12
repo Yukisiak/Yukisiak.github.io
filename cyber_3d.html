@@ -601,6 +601,8 @@
             </p>
             <button class="menu-btn" id="playBtn">PLAY</button>
             <button class="menu-btn" id="unlockBtn">CHARACTERS</button>
+            <button class="menu-btn" id="questsBtn" style="background:#ffaa00; color:#000;">QUESTS &
+                ACHIEVEMENTS</button>
             <button class="menu-btn" id="settingsBtn">SETTINGS</button>
         </div>
 
@@ -609,6 +611,12 @@
             <div id="unlock-currency" class="small-readout"></div>
             <div id="character-grid" class="character-grid"></div>
             <button class="menu-btn" id="backFromUnlockBtn">BACK</button>
+        </div>
+
+        <div id="quests-screen" class="menu-panel hidden">
+            <h2 style="color:#ffaa00; text-shadow:0 0 10px #ffaa00;">QUESTS & ACHIEVEMENTS</h2>
+            <div id="quests-grid" class="character-grid"></div>
+            <button class="menu-btn" id="backFromQuestsBtn">BACK</button>
         </div>
 
         <div id="settings-screen" class="menu-panel hidden">
@@ -1192,7 +1200,8 @@
         };
 
         const MODEL_PATHS = {
-            cannon: ''
+            // Umieść swój plik modelu działa tutaj (np. models/cannon.glb)
+            cannon: 'models/cannon.glb'
         };
 
         // =====================================================================SS
@@ -1977,6 +1986,8 @@
         let currentWeaponSlot = 0;
         let equippedWeapons = [0];
         let unlockedWeapons = [];
+        // If true, starting/resetting a run won't auto-swap equipped weapons to the character's start weapon
+        let preventAutoWeaponSwap = false;
         let ownedUpgrades = {};
         let mobility = { slide: true, dash: false, doubleJump: false, wallRun: false };
         let doubleJumpReady = false, isSliding = false, slideTimer = 0, slideCooldown = 0, wallRunTimer = 0;
@@ -1990,7 +2001,7 @@
         let abilityCooldownTimer = 0;
         let meleeCooldownTimer = 0;
 
-        const STORAGE_KEY = 'cyberDoomMetaV3';
+        const STORAGE_KEY = 'CYBER_DOOM_META_V5';
         const MAX_EQUIPPED_WEAPONS = 2;
 
         const WEAPON_CATALOG = [
@@ -2075,14 +2086,14 @@
         let floatingDamageNumbers = [];
 
         const CHARACTER_CATALOG = [
-            { id: 'rookie', name: 'ROOKIE', achievement: null, desc: 'Standard Operative. Q: Frag Grenade, Passive: +15 HP & +20% Speed.' },
-            { id: 'gunner', name: 'GUNNER', achievement: { stat: 'totalKills', target: 150, label: 'Kill 150 Enemies' }, desc: 'Q: Overclock (Extreme Fire Rate), Passive: +25% Ammo.' },
-            { id: 'breacher', name: 'BREACHER', achievement: { stat: 'maxWaveCleared', target: 8, label: 'Clear Wave 8' }, desc: 'Q: Energy Shield, Passive: Armor & Extra Pellets.' },
-            { id: 'pyromancer', name: 'PYROMANCER', achievement: { stat: 'oilIgnited', target: 75, label: 'Ignite 75 Oil Slicks' }, desc: 'Q: 360° Flame Wave, Passive: Burn enemies on hit.' },
-            { id: 'frost', name: 'FROST', achievement: { stat: 'powerupsCollected', target: 35, label: 'Collect 35 Power-Ups' }, desc: 'Q: Frost Blizzard (Freezes in place), Passive: Slow on hit.' },
-            { id: 'railrunner', name: 'RAILRUNNER', achievement: { stat: 'headshots', target: 250, label: 'Land 250 Headshots' }, desc: 'Q: Cyber-Blink Teleport, Passive: Natural Piercing.' },
-            { id: 'demolition', name: 'DEMOLITION', achievement: { stat: 'barrelsDestroyed', target: 200, label: 'Destroy 200 Barrels' }, desc: 'Q: EMP Shockwave Grenade, Passive: Self-explosion immunity.' },
-            { id: 'vampire', name: 'VAMPIRE', achievement: { stat: 'hpPickupsCollected', target: 200, label: 'Collect 200 Health Packs' }, desc: 'Q: Blood Nova (HP Drain), Passive: Built-in Vampire Leech.' }
+            { id: 'rookie', name: 'ROOKIE', weapon: 'pistol', achievement: null, desc: 'Standard Operative. Q: Frag Grenade, Passive: +15 HP & +20% Speed.' },
+            { id: 'gunner', name: 'GUNNER', weapon: 'rifle', achievement: { stat: 'totalKills', target: 150, label: 'Kill 150 Enemies' }, desc: 'Q: Overclock (Extreme Fire Rate), Passive: +25% Ammo.' },
+            { id: 'breacher', name: 'BREACHER', weapon: 'shotgun', achievement: { stat: 'maxWaveCleared', target: 8, label: 'Clear Wave 8' }, desc: 'Q: Energy Shield, Passive: Armor & Extra Pellets.' },
+            { id: 'pyromancer', name: 'PYROMANCER', weapon: 'wand', achievement: { stat: 'oilIgnited', target: 75, label: 'Ignite 75 Oil Slicks' }, desc: 'Q: 360° Flame Wave, Passive: Burn enemies on hit.' },
+            { id: 'frost', name: 'FROST', weapon: 'ice_staff', achievement: { stat: 'powerupsCollected', target: 35, label: 'Collect 35 Power-Ups' }, desc: 'Q: Frost Blizzard (Freezes in place), Passive: Slow on hit.' },
+            { id: 'railrunner', name: 'RAILRUNNER', weapon: 'sniper', achievement: { stat: 'headshots', target: 250, label: 'Land 250 Headshots' }, desc: 'Q: Cyber-Blink Teleport, Passive: Natural Piercing.' },
+            { id: 'demolition', name: 'DEMOLITION', weapon: 'burst', achievement: { stat: 'barrelsDestroyed', target: 200, label: 'Destroy 200 Barrels' }, desc: 'Q: EMP Shockwave Grenade, Passive: Self-explosion immunity.' },
+            { id: 'vampire', name: 'VAMPIRE', weapon: 'crossbow', achievement: { stat: 'hpPickupsCollected', target: 200, label: 'Collect 200 Health Packs' }, desc: 'Q: Blood Nova (HP Drain), Passive: Built-in Vampire Leech.' }
         ];
 
         // --- 7. META-STAN I ZAPIS (localStorage) ---
@@ -2098,13 +2109,26 @@
                     headshots: 0,
                     maxWaveCleared: 0
                 };
+                const stats = Object.assign(defaultStats, parsed.stats || {});
+
+                // Strictly re-evaluate unlocked characters from achievement stats – ignore old save data
+                const unlocked = ['rookie'];
+                CHARACTER_CATALOG.forEach(c => {
+                    if (c.achievement) {
+                        if ((stats[c.achievement.stat] || 0) >= c.achievement.target) {
+                            unlocked.push(c.id);
+                        }
+                    }
+                });
+
+                const selected = unlocked.includes(parsed.selectedCharacter) ? parsed.selectedCharacter : 'rookie';
                 return {
                     currency: parsed.currency || 0,
-                    unlockedCharacters: parsed.unlockedCharacters || ['rookie'],
-                    selectedCharacter: parsed.selectedCharacter || 'rookie',
+                    unlockedCharacters: unlocked,
+                    selectedCharacter: selected,
                     sensitivity: parsed.sensitivity || 1.0,
                     fov: parsed.fov || 75,
-                    stats: Object.assign(defaultStats, parsed.stats || {})
+                    stats: stats
                 };
             } catch (err) {
                 return {
@@ -2475,7 +2499,19 @@
             cyberAudio.deathEffectActive = false;
             cyberAudio.deathPitchFactor = 1.0;
             weapons = WEAPON_CATALOG.map(w => ({ ...w, currentMag: w.mag || 999, reloading: false }));
-            unlockedWeapons = weapons.map(w => w.id === 'pistol');
+            // Ustaw domyślną listę odblokowanych broni na podstawie odblokowanych postaci
+            unlockedWeapons = weapons.map(() => false);
+            if (metaState && metaState.unlockedCharacters && metaState.unlockedCharacters.length) {
+                metaState.unlockedCharacters.forEach(cid => {
+                    const ch = CHARACTER_CATALOG.find(c => c.id === cid);
+                    if (ch) {
+                        const wi = getWeaponIndexById(ch.weapon);
+                        if (wi >= 0) unlockedWeapons[wi] = true;
+                    }
+                });
+            }
+            // Zadbaj o to, by pistolet był zawsze dostępny
+            const pistolIndex = getWeaponIndexById('pistol'); if (pistolIndex >= 0) unlockedWeapons[pistolIndex] = true;
             ownedUpgrades = {};
             mobility = { slide: true, dash: false, doubleJump: false, wallRun: false };
             activeBuffs = {};
@@ -2483,8 +2519,20 @@
             currentWeaponSlot = 0;
             const startWeaponIndex = Math.max(0, getWeaponIndexById(character.weapon));
             unlockedWeapons[startWeaponIndex] = true;
-            equippedWeapons = [startWeaponIndex];
-            currentWeapon = startWeaponIndex;
+            if (!preventAutoWeaponSwap) {
+                equippedWeapons = [startWeaponIndex];
+                currentWeapon = startWeaponIndex;
+            } else {
+                // preserve existing equipped weapons if present, otherwise fallback to start weapon
+                if (!equippedWeapons || equippedWeapons.length === 0) {
+                    equippedWeapons = [startWeaponIndex];
+                    currentWeapon = startWeaponIndex;
+                } else {
+                    if (currentWeapon == null || !equippedWeapons.includes(currentWeapon)) {
+                        currentWeapon = equippedWeapons[0];
+                    }
+                }
+            }
 
             if (selectedCharacterId === 'rookie') {
                 stats.hp = 115;
@@ -2572,12 +2620,34 @@
             });
         }
 
+        function renderQuests() {
+            const grid = document.getElementById('quests-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            CHARACTER_CATALOG.forEach(character => {
+                if (!character.achievement) return;
+                const currentVal = (metaState.stats && metaState.stats[character.achievement.stat]) || 0;
+                const targetVal = character.achievement.target;
+                const percent = Math.min(100, Math.floor((currentVal / targetVal) * 100));
+
+                const card = document.createElement('div');
+                card.className = 'character-card';
+                card.innerHTML = `
+                    <h3>${character.name} — ${character.achievement.label}</h3>
+                    <p>POSTĘP: ${currentVal} / ${targetVal} (${percent}%)</p>
+                    <div style="margin-top:8px;"><button class="shop-btn" style="width:100%;" ${currentVal < targetVal ? 'disabled' : ''}>${currentVal >= targetVal ? 'COMPLETED' : 'IN PROGRESS'}</button></div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
         function showOverlayPanel(id) {
-            ['main-menu', 'unlock-screen', 'settings-screen'].forEach(panelId => {
+            ['main-menu', 'unlock-screen', 'settings-screen', 'quests-screen'].forEach(panelId => {
                 const el = document.getElementById(panelId);
                 if (el) el.classList.toggle('hidden', panelId !== id);
             });
             if (id === 'unlock-screen') renderCharacterUnlocks();
+            if (id === 'quests-screen') renderQuests();
             updateMetaReadouts();
         }
 
@@ -2630,7 +2700,11 @@
             };
             document.getElementById('unlockBtn').onclick = () => showOverlayPanel('unlock-screen');
             document.getElementById('settingsBtn').onclick = () => showOverlayPanel('settings-screen');
+            const qBtn = document.getElementById('questsBtn');
+            if (qBtn) qBtn.onclick = () => showOverlayPanel('quests-screen');
             document.getElementById('backFromUnlockBtn').onclick = () => showOverlayPanel('main-menu');
+            const backQ = document.getElementById('backFromQuestsBtn');
+            if (backQ) backQ.onclick = () => showOverlayPanel('main-menu');
             document.getElementById('backFromSettingsBtn').onclick = () => showOverlayPanel('main-menu');
             document.getElementById('mainSensSlider').oninput = (e) => syncSensitivityControls(e.target.value);
             document.getElementById('mainFovSlider').oninput = (e) => syncFovControls(e.target.value);
@@ -4762,6 +4836,48 @@
                 log(`NOCLIP: ${stats.noclip ? 'ENABLED' : 'DISABLED'}`);
             } else if (cmd === 'help') {
                 log("AVAILABLE CHEATS:\n- god (toggle invincibility)\n- add score <amount> / score add <amount>\n- heal (restore HP)\n- killall (kill current wave)\n- wave <number>\n- noclip");
+            } else if (cmd === 'unlockall' || cmd === 'unlock all') {
+                // Developer convenience: odblokuj wszystkie postacie i przypisz ich bronie
+                metaState.unlockedCharacters = CHARACTER_CATALOG.map(c => c.id);
+                // Odblokuj broń startową każdej postaci
+                if (weapons && weapons.length) {
+                    unlockedWeapons = weapons.map(() => false);
+                    metaState.unlockedCharacters.forEach(cid => {
+                        const ch = CHARACTER_CATALOG.find(c => c.id === cid);
+                        if (ch) {
+                            const wi = getWeaponIndexById(ch.weapon);
+                            if (wi >= 0) unlockedWeapons[wi] = true;
+                        }
+                    });
+                    const pi = getWeaponIndexById('pistol'); if (pi >= 0) unlockedWeapons[pi] = true;
+                    updateShopUI(); updateWeaponHud();
+                }
+                saveMetaState(); renderCharacterUnlocks(); renderQuests();
+                log('ALL CHARACTERS UNLOCKED (and their start weapons).');
+            } else if (cmd === 'lockall' || cmd === 'lock all') {
+                // Lock all characters except rookie
+                metaState.unlockedCharacters = ['rookie'];
+                // Update unlocked weapons accordingly (keep pistol)
+                if (weapons && weapons.length) {
+                    unlockedWeapons = weapons.map(() => false);
+                    const pi = getWeaponIndexById('pistol'); if (pi >= 0) unlockedWeapons[pi] = true;
+                    updateShopUI(); updateWeaponHud();
+                }
+                saveMetaState(); renderCharacterUnlocks(); renderQuests();
+                log('ALL CHARACTERS LOCKED (only ROOKIE available).');
+            } else if (cmd.startsWith('preserveweapons')) {
+                // Usage: preserveweapons on|off
+                const parts = cmd.split(' ');
+                const arg = parts[1] || '';
+                if (arg === 'on' || arg === 'true') {
+                    preventAutoWeaponSwap = true;
+                    log('preserveweapons: ON (weapons will not auto-swap on run start)');
+                } else if (arg === 'off' || arg === 'false') {
+                    preventAutoWeaponSwap = false;
+                    log('preserveweapons: OFF');
+                } else {
+                    log("USAGE: preserveweapons on|off");
+                }
             } else {
                 log(`UNKNOWN COMMAND: '${cmdStr}'. TYPE 'help' FOR CHEATS.`);
             }
