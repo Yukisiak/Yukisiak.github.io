@@ -2903,7 +2903,7 @@
         }
 
         // =====================================================================
-        // MULTIPLAYER PVP SYSTEM (PeerJS WebRTC)
+        // MULTIPLAYER PVP SYSTEM (Dual PeerJS WebRTC + Local Bus Transport)
         // =====================================================================
         let isPvPMode = false;
         let peer = null;
@@ -2933,6 +2933,32 @@
             { x: 30, y: 2, z: -30 }
         ];
 
+        // Local machine transport bus (BroadcastChannel + LocalStorage fallback)
+        const pvpBus = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('cyber_doom_pvp_bus') : null;
+        if (pvpBus) {
+            pvpBus.onmessage = (e) => {
+                if (!e.data || !roomCode) return;
+                if (e.data.room === roomCode && e.data.senderId !== localPlayerId) {
+                    handleNetworkMessage(e.data.senderId, e.data.payload);
+                }
+            };
+        }
+
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'cyber_doom_pvp_msg' && e.newValue && roomCode) {
+                try {
+                    const data = JSON.parse(e.newValue);
+                    if (data && data.room === roomCode && data.senderId !== localPlayerId) {
+                        handleNetworkMessage(data.senderId, data.payload);
+                    }
+                } catch(err){}
+            }
+        });
+
+        function cleanPeerId(code) {
+            return 'cyber_' + (code || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        }
+
         function generateRoomCode() {
             const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
             let code = '';
@@ -2946,24 +2972,51 @@
             if (peer) {
                 try { peer.destroy(); } catch(e){}
             }
-            peer = customPeerId ? new Peer(customPeerId) : new Peer();
 
-            peer.on('open', (id) => {
-                localPlayerId = id;
-                if (callback) callback(null, id);
-            });
+            const formattedId = customPeerId ? cleanPeerId(customPeerId) : null;
+            const peerOptions = {
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' }
+                    ]
+                }
+            };
 
-            peer.on('error', (err) => {
-                console.error('[PEERJS ERROR]', err);
-                if (callback) callback(err, null);
-            });
+            try {
+                peer = formattedId ? new Peer(formattedId, peerOptions) : new Peer(peerOptions);
+            } catch(e) {
+                console.warn('[PEERJS INIT EXCEPTION]', e);
+                peer = null;
+            }
 
-            peer.on('connection', (conn) => {
-                setupDataConnection(conn);
-            });
+            if (!localPlayerId) {
+                localPlayerId = 'p_' + Math.random().toString(36).substr(2, 6);
+            }
+
+            if (peer) {
+                peer.on('open', (id) => {
+                    localPlayerId = id;
+                    console.log('[PEERJS OPEN] Local Peer ID:', id);
+                    if (callback) callback(null, id);
+                });
+
+                peer.on('error', (err) => {
+                    console.warn('[PEERJS WARNING]', err);
+                    if (callback) callback(null, localPlayerId);
+                });
+
+                peer.on('connection', (conn) => {
+                    setupDataConnection(conn);
+                });
+            } else {
+                if (callback) callback(null, localPlayerId);
+            }
         }
 
         function setupDataConnection(conn) {
+            if (!conn) return;
             peerConnections[conn.peer] = conn;
 
             conn.on('open', () => {
@@ -2988,11 +3041,31 @@
         }
 
         function broadcastNetworkData(data) {
+            // Send via WebRTC peer connections
             Object.values(peerConnections).forEach(conn => {
                 if (conn && conn.open) {
-                    conn.send(data);
+                    try { conn.send(data); } catch(e){}
                 }
             });
+
+            // Send via BroadcastChannel (same machine/tabs)
+            if (pvpBus && roomCode) {
+                try {
+                    pvpBus.postMessage({ room: roomCode, senderId: localPlayerId, payload: data });
+                } catch(e){}
+            }
+
+            // Send via LocalStorage bus
+            if (roomCode) {
+                try {
+                    localStorage.setItem('cyber_doom_pvp_msg', JSON.stringify({
+                        room: roomCode,
+                        senderId: localPlayerId,
+                        payload: data,
+                        ts: Date.now()
+                    }));
+                } catch(e){}
+            }
         }
 
         function handleNetworkMessage(senderPeerId, data) {
@@ -3000,31 +3073,32 @@
 
             if (data.type === 'lobby_join') {
                 if (isHost) {
-                    if (lobbyPlayers.length >= 4) {
-                        const conn = peerConnections[senderPeerId];
-                        if (conn) conn.send({ type: 'error', msg: 'Pokój jest pełny! (Max 4 graczy)' });
-                        return;
-                    }
-                    let team = 1;
-                    if (mpSelectedMode === '2v2') {
-                        const team1Count = lobbyPlayers.filter(p => p.team === 1).length;
-                        const team2Count = lobbyPlayers.filter(p => p.team === 2).length;
-                        team = team1Count <= team2Count ? 1 : 2;
-                    } else if (mpSelectedMode === '3v1') {
-                        const juggExists = lobbyPlayers.some(p => p.team === 2);
-                        team = juggExists ? 1 : 2;
-                    }
+                    if (!lobbyPlayers.some(p => p.id === senderPeerId)) {
+                        if (lobbyPlayers.length >= 4) {
+                            broadcastNetworkData({ type: 'error', msg: 'Pokój jest pełny!' });
+                            return;
+                        }
+                        let team = 1;
+                        if (mpSelectedMode === '2v2') {
+                            const team1Count = lobbyPlayers.filter(p => p.team === 1).length;
+                            const team2Count = lobbyPlayers.filter(p => p.team === 2).length;
+                            team = team1Count <= team2Count ? 1 : 2;
+                        } else if (mpSelectedMode === '3v1') {
+                            const juggExists = lobbyPlayers.some(p => p.team === 2);
+                            team = juggExists ? 1 : 2;
+                        }
 
-                    lobbyPlayers.push({
-                        id: senderPeerId,
-                        name: data.name || 'CyberRider',
-                        isHost: false,
-                        team: team,
-                        kills: 0,
-                        deaths: 0,
-                        damage: 0,
-                        ping: 30
-                    });
+                        lobbyPlayers.push({
+                            id: senderPeerId,
+                            name: data.name || 'CyberRider',
+                            isHost: false,
+                            team: team,
+                            kills: 0,
+                            deaths: 0,
+                            damage: 0,
+                            ping: 20
+                        });
+                    }
                     broadcastLobbyState();
                 }
             } else if (data.type === 'lobby_state') {
@@ -3073,7 +3147,12 @@
 
             if (codeEl) codeEl.textContent = roomCode || '---';
             if (countEl) countEl.textContent = lobbyPlayers.length;
-            if (statusEl) statusEl.textContent = isHost ? 'Jesteś Hostem pokoju! Oczekiwanie na graczy...' : 'Połączono z Hostem!';
+            if (statusEl) {
+                statusEl.textContent = isHost ? 
+                    `JESTEŚ HOSTEM! Połączono (${lobbyPlayers.length}/4). Kliknij "ROZPOCZNIJ WALKĘ PVP" aby zagrać!` : 
+                    `POŁĄCZONO Z HOSTEM! Oczekiwanie aż Host uruchomi mecz...`;
+                statusEl.style.color = '#00ffaa';
+            }
 
             if (startBtn) {
                 startBtn.style.display = isHost ? 'block' : 'none';
@@ -3093,7 +3172,7 @@
                     item.className = `mp-player-item team-${p.team}`;
                     const teamName = mpSelectedMode === '1v1v1v1' ? 'FFA' : (mpSelectedMode === '3v1' ? (p.team === 2 ? 'JUGGERNAUT' : 'HUNTER') : `DRUŻYNA ${p.team}`);
                     item.innerHTML = `
-                        <span>${p.isHost ? '★ ' : ''}${p.name} (${p.id.slice(-4)})</span>
+                        <span>${p.isHost ? '★ ' : ''}${p.name} (${(p.id || '').slice(-4)})</span>
                         <span style="color:${p.team === 2 ? '#ff00ff' : '#00ffff'}; font-size:0.85rem;">[${teamName}]</span>
                     `;
                     listEl.appendChild(item);
@@ -3353,7 +3432,7 @@
             if (backBtn) backBtn.onclick = () => showOverlayPanel('main-menu');
 
             document.getElementById('mpHostBtn').onclick = () => {
-                localNickname = nickInput.value || 'HostPlayer';
+                localNickname = (nickInput.value || 'HostPlayer').trim();
                 roomCode = generateRoomCode();
                 isHost = true;
 
@@ -3362,7 +3441,7 @@
                 document.getElementById('mp-step-lobby').style.display = 'block';
 
                 lobbyPlayers = [{
-                    id: 'HOST',
+                    id: localPlayerId || 'HOST',
                     name: localNickname,
                     isHost: true,
                     team: 1,
@@ -3373,14 +3452,11 @@
                 }];
 
                 initPeerJS(roomCode, (err, id) => {
-                    if (err) {
-                        document.getElementById('mp-lobby-status').innerText = 'BŁĄD PEERJS: Kod zajęty! Spróbuj ponownie.';
-                        return;
-                    }
-                    localPlayerId = id;
-                    lobbyPlayers[0].id = id;
+                    localPlayerId = id || roomCode;
+                    lobbyPlayers[0].id = localPlayerId;
                     updateLobbyUI();
                 });
+                updateLobbyUI();
             };
 
             document.getElementById('mpJoinViewBtn').onclick = () => {
@@ -3394,28 +3470,34 @@
             };
 
             document.getElementById('mpConnectBtn').onclick = () => {
-                const code = (document.getElementById('mp-code-input').value || '').trim().toUpperCase();
-                if (!code) return;
-                localNickname = nickInput.value || 'ClientPlayer';
+                const rawCode = (document.getElementById('mp-code-input').value || '').trim().toUpperCase();
+                if (!rawCode) return;
+                localNickname = (nickInput.value || 'ClientPlayer').trim();
                 isHost = false;
-                roomCode = code.startsWith('CYBER-') ? code : 'CYBER-' + code;
+                roomCode = rawCode.startsWith('CYBER-') ? rawCode : 'CYBER-' + rawCode;
 
                 document.getElementById('mp-step-join').style.display = 'none';
                 document.getElementById('mp-step-lobby').style.display = 'block';
-                document.getElementById('mp-lobby-status').innerText = 'Łączenie z hostem ' + roomCode + '...';
+                document.getElementById('mp-lobby-status').innerText = 'Łączenie z pokojem ' + roomCode + '...';
 
                 initPeerJS(null, (err, myId) => {
-                    if (err) {
-                        document.getElementById('mp-lobby-status').innerText = 'BŁĄD PEERJS przy połączeniu.';
-                        return;
+                    localPlayerId = myId || 'p_' + Math.random().toString(36).substr(2, 6);
+                    
+                    const targetPeerId = cleanPeerId(roomCode);
+                    console.log('[NET] Łączenie z Host Peer ID:', targetPeerId);
+                    
+                    if (peer) {
+                        try {
+                            const conn = peer.connect(targetPeerId);
+                            setupDataConnection(conn);
+                            conn.on('open', () => {
+                                conn.send({ type: 'lobby_join', name: localNickname });
+                            });
+                        } catch(e){}
                     }
-                    localPlayerId = myId;
-                    const conn = peer.connect(roomCode);
-                    setupDataConnection(conn);
 
-                    conn.on('open', () => {
-                        conn.send({ type: 'lobby_join', name: localNickname });
-                    });
+                    // Send lobby_join message via local transport bus
+                    broadcastNetworkData({ type: 'lobby_join', name: localNickname });
                 });
             };
 
@@ -3424,7 +3506,7 @@
             };
 
             document.getElementById('mpLeaveLobbyBtn').onclick = () => {
-                if (peer) { peer.destroy(); peer = null; }
+                if (peer) { try { peer.destroy(); } catch(e){} peer = null; }
                 isHost = false;
                 isPvPMode = false;
                 lobbyPlayers = [];
