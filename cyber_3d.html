@@ -2857,7 +2857,7 @@
         }
 
         function showOverlayPanel(id) {
-            ['main-menu', 'unlock-screen', 'settings-screen', 'quests-screen'].forEach(panelId => {
+            ['main-menu', 'unlock-screen', 'settings-screen', 'quests-screen', 'multiplayer-screen'].forEach(panelId => {
                 const el = document.getElementById(panelId);
                 if (el) el.classList.toggle('hidden', panelId !== id);
             });
@@ -3076,7 +3076,7 @@
             if (statusEl) statusEl.textContent = isHost ? 'Jesteś Hostem pokoju! Oczekiwanie na graczy...' : 'Połączono z Hostem!';
 
             if (startBtn) {
-                startBtn.style.display = (isHost && lobbyPlayers.length >= 2) ? 'block' : 'none';
+                startBtn.style.display = isHost ? 'block' : 'none';
             }
 
             if (modeSelector) {
