@@ -776,6 +776,10 @@
                 <div class="mp-lobby-box">
                     <div style="color:#aaa; font-size:0.9rem;">KOD POKOJU (UDOSTĘPNIJ GRACZOM):</div>
                     <div id="mp-room-code" class="mp-room-code-display">ŁĄCZENIE...</div>
+                    <div style="display:flex; gap:10px; justify-content:center; margin-bottom:12px;">
+                        <button class="mp-mode-btn" id="mpCopyCodeBtn">📋 KOPIUJ KOD</button>
+                        <button class="mp-mode-btn" id="mpCopyLinkBtn">🔗 KOPIUJ LINK DO GRY</button>
+                    </div>
                     <div id="mp-lobby-status" style="color:#00ffaa; font-size:0.95rem; margin-bottom:10px;">Inicjalizacja węzła PeerJS...</div>
                     
                     <div style="text-align:left; color:#00ffaa; font-size:0.9rem; margin-top:10px;">TRYB GRY (WYBIERA HOST):</div>
@@ -2979,7 +2983,11 @@
                     iceServers: [
                         { urls: 'stun:stun.l.google.com:19302' },
                         { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.l.google.com:19302' }
+                        { urls: 'stun:stun2.l.google.com:19302' },
+                        { urls: 'stun:stun3.l.google.com:19302' },
+                        { urls: 'stun:stun4.l.google.com:19302' },
+                        { urls: 'stun:stun.services.mozilla.com' },
+                        { urls: 'stun:global.stun.twilio.com:3478' }
                     ]
                 }
             };
@@ -3041,21 +3049,18 @@
         }
 
         function broadcastNetworkData(data) {
-            // Send via WebRTC peer connections
             Object.values(peerConnections).forEach(conn => {
                 if (conn && conn.open) {
                     try { conn.send(data); } catch(e){}
                 }
             });
 
-            // Send via BroadcastChannel (same machine/tabs)
             if (pvpBus && roomCode) {
                 try {
                     pvpBus.postMessage({ room: roomCode, senderId: localPlayerId, payload: data });
                 } catch(e){}
             }
 
-            // Send via LocalStorage bus
             if (roomCode) {
                 try {
                     localStorage.setItem('cyber_doom_pvp_msg', JSON.stringify({
@@ -3322,10 +3327,14 @@
 
         function respawnLocalPlayerPvP() {
             isLocalPvPDead = false;
+            stats.dead = false;
             localPvPHp = localPvPMaxHp;
             stats.hp = localPvPMaxHp;
             const spawn = PVP_SPAWN_POINTS[Math.floor(Math.random() * PVP_SPAWN_POINTS.length)];
             camera.position.set(spawn.x, spawn.y, spawn.z);
+            move = { f: false, b: false, l: false, r: false };
+            playerVelY = 0;
+            isGrounded = true;
             updateHUD();
             const notice = document.getElementById('wave-notice');
             if (notice) notice.style.display = 'none';
@@ -3340,15 +3349,25 @@
         function startPvPMatchClient(data) {
             isPvPMode = true;
             gameStarted = true;
+            stats.dead = false;
+            isPaused = false;
+            inShop = false;
+            isMountedCannon = false;
+            isLocalPvPDead = false;
+            move = { f: false, b: false, l: false, r: false };
+            playerVelY = 0;
+            isGrounded = true;
             enemies = [];
 
             const localIdx = lobbyPlayers.findIndex(p => p.id === localPlayerId);
             const spawn = PVP_SPAWN_POINTS[localIdx >= 0 ? localIdx % PVP_SPAWN_POINTS.length : 0];
             camera.position.set(spawn.x, spawn.y, spawn.z);
+            camera.rotation.set(0, 0, 0);
             localPvPHp = 100;
             localPvPMaxHp = 100;
             stats.hp = 100;
             stats.maxHp = 100;
+            updateHUD();
 
             document.getElementById('overlay').style.display = 'none';
             document.body.requestPointerLock();
@@ -3431,6 +3450,31 @@
             const backBtn = document.getElementById('backFromMpBtn');
             if (backBtn) backBtn.onclick = () => showOverlayPanel('main-menu');
 
+            const copyCodeBtn = document.getElementById('mpCopyCodeBtn');
+            if (copyCodeBtn) {
+                copyCodeBtn.onclick = () => {
+                    if (roomCode) {
+                        navigator.clipboard.writeText(roomCode);
+                        const orig = copyCodeBtn.textContent;
+                        copyCodeBtn.textContent = '✓ SKOPIOWANO!';
+                        setTimeout(() => { copyCodeBtn.textContent = orig; }, 1500);
+                    }
+                };
+            }
+
+            const copyLinkBtn = document.getElementById('mpCopyLinkBtn');
+            if (copyLinkBtn) {
+                copyLinkBtn.onclick = () => {
+                    if (roomCode) {
+                        const url = window.location.origin + window.location.pathname + '?room=' + encodeURIComponent(roomCode);
+                        navigator.clipboard.writeText(url);
+                        const orig = copyLinkBtn.textContent;
+                        copyLinkBtn.textContent = '✓ SKOPIOWANO LINK!';
+                        setTimeout(() => { copyLinkBtn.textContent = orig; }, 1500);
+                    }
+                };
+            }
+
             document.getElementById('mpHostBtn').onclick = () => {
                 localNickname = (nickInput.value || 'HostPlayer').trim();
                 roomCode = generateRoomCode();
@@ -3486,18 +3530,25 @@
                     const targetPeerId = cleanPeerId(roomCode);
                     console.log('[NET] Łączenie z Host Peer ID:', targetPeerId);
                     
-                    if (peer) {
-                        try {
-                            const conn = peer.connect(targetPeerId);
-                            setupDataConnection(conn);
-                            conn.on('open', () => {
-                                conn.send({ type: 'lobby_join', name: localNickname });
-                            });
-                        } catch(e){}
+                    let attempts = 0;
+                    function tryConnect() {
+                        attempts++;
+                        if (peer) {
+                            try {
+                                const conn = peer.connect(targetPeerId, { reliable: true });
+                                setupDataConnection(conn);
+                                conn.on('open', () => {
+                                    console.log('[NET] Połączono z Hostem WebRTC!');
+                                    conn.send({ type: 'lobby_join', name: localNickname });
+                                });
+                            } catch(e){}
+                        }
+                        broadcastNetworkData({ type: 'lobby_join', name: localNickname });
+                        if (attempts < 4 && !lobbyPlayers.some(p => p.id === localPlayerId && !p.isHost)) {
+                            setTimeout(tryConnect, 1200);
+                        }
                     }
-
-                    // Send lobby_join message via local transport bus
-                    broadcastNetworkData({ type: 'lobby_join', name: localNickname });
+                    tryConnect();
                 });
             };
 
@@ -3529,6 +3580,17 @@
                         broadcastLobbyState();
                     };
                 });
+            }
+
+            // Auto check URL parameter ?room=CYBER-XXXX
+            const urlParams = new URLSearchParams(window.location.search);
+            const autoRoom = urlParams.get('room');
+            if (autoRoom) {
+                const input = document.getElementById('mp-code-input');
+                if (input) input.value = autoRoom;
+                showOverlayPanel('multiplayer-screen');
+                document.getElementById('mp-step-setup').style.display = 'none';
+                document.getElementById('mp-step-join').style.display = 'block';
             }
         }
 
