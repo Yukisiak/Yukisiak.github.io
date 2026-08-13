@@ -13,6 +13,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <!-- =====================================================================
          STYLE CSS — interfejs gry (HUD, menu, sklep, efekty wizualne)
          Każda sekcja odpowiada za wygląd konkretnego elementu UI.
@@ -57,6 +58,146 @@
             bottom: 20px;
             left: 20px;
         }
+
+        /* MULTIPLAYER & SCOREBOARD STYLES */
+        #multiplayer-screen {
+            width: 620px;
+            max-width: 95vw;
+        }
+        .mp-input-group {
+            margin: 15px 0;
+            text-align: left;
+        }
+        .mp-input-group label {
+            display: block;
+            color: #00ffaa;
+            font-size: 0.95rem;
+            margin-bottom: 5px;
+            text-shadow: 0 0 5px #00ffaa;
+        }
+        .mp-input {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(0, 20, 30, 0.85);
+            border: 2px solid #00ffaa;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .mp-input:focus {
+            outline: none;
+            border-color: #ff0055;
+            box-shadow: 0 0 10px #ff0055;
+        }
+        .mp-lobby-box {
+            background: rgba(0, 0, 0, 0.75);
+            border: 1px solid #00ffaa;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        .mp-room-code-display {
+            font-size: 2.0rem;
+            color: #ff0055;
+            font-weight: bold;
+            letter-spacing: 4px;
+            margin: 10px 0;
+            text-shadow: 0 0 12px #ff0055;
+        }
+        .mp-player-list {
+            margin: 10px 0;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+        .mp-player-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            margin: 6px 0;
+            background: rgba(0, 255, 170, 0.12);
+            border-left: 4px solid #00ffaa;
+            border-radius: 3px;
+            color: #fff;
+        }
+        .mp-player-item.team-1 { border-left-color: #00ffff; }
+        .mp-player-item.team-2 { border-left-color: #ff00ff; }
+        .mp-mode-select {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            justify-content: center;
+        }
+        .mp-mode-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #00ffaa;
+            color: #00ffaa;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.95rem;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .mp-mode-btn.active, .mp-mode-btn:hover {
+            background: #00ffaa;
+            color: #000;
+            font-weight: bold;
+            box-shadow: 0 0 10px #00ffaa;
+        }
+
+        /* SCOREBOARD OVERLAY [TAB KEY] */
+        #scoreboard-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 760px;
+            max-width: 95vw;
+            background: rgba(5, 10, 20, 0.95);
+            border: 2px solid #00ffaa;
+            box-shadow: 0 0 30px rgba(0, 255, 170, 0.5);
+            padding: 24px;
+            border-radius: 8px;
+            color: #fff;
+            z-index: 1000;
+            display: none;
+            font-family: 'Courier New', monospace;
+            pointer-events: none;
+        }
+        #scoreboard-overlay h2 {
+            margin: 0 0 5px 0;
+            color: #00ffaa;
+            text-shadow: 0 0 10px #00ffaa;
+            text-align: center;
+        }
+        .scoreboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .scoreboard-table th {
+            background: rgba(0, 255, 170, 0.2);
+            color: #00ffaa;
+            padding: 10px;
+            text-align: center;
+            border-bottom: 2px solid #00ffaa;
+            font-size: 0.9rem;
+        }
+        .scoreboard-table td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.95rem;
+        }
+        .scoreboard-table tr.is-local {
+            background: rgba(255, 255, 0, 0.18);
+            font-weight: bold;
+        }
+        .scoreboard-table tr.team-1 { border-left: 4px solid #00ffff; }
+        .scoreboard-table tr.team-2 { border-left: 4px solid #ff00ff; }
 
         /* Wyświetlacz tarczy gracza obok HP */
         #shield-hud {
@@ -599,11 +740,60 @@
                 1/2 - Select Weapon | LMB - Shoot | Q - Class Ability | F/V - Cyber-Blade Melee<br>
                 E - Mounted Cannon | ESC - Pause | ` (Tilde) - Dev Console
             </p>
-            <button class="menu-btn" id="playBtn">PLAY</button>
+            <button class="menu-btn" id="playBtn">PLAY (SOLO)</button>
+            <button class="menu-btn" id="mpMenuBtn" style="background:#ff0055; color:#fff; text-shadow:0 0 10px #ff0055;">MULTIPLAYER (PvP)</button>
             <button class="menu-btn" id="unlockBtn">CHARACTERS</button>
             <button class="menu-btn" id="questsBtn" style="background:#ffaa00; color:#000;">QUESTS &
                 ACHIEVEMENTS</button>
             <button class="menu-btn" id="settingsBtn">SETTINGS</button>
+        </div>
+
+        <!-- MULTIPLAYER MENU PANEL -->
+        <div id="multiplayer-screen" class="menu-panel hidden">
+            <h2 style="color:#ff0055; text-shadow:0 0 10px #ff0055;">MULTIPLAYER PVP (P2P)</h2>
+            
+            <div id="mp-step-setup">
+                <div class="mp-input-group">
+                    <label for="mp-nickname-input">NICKNAME GRACZA:</label>
+                    <input type="text" id="mp-nickname-input" class="mp-input" value="CyberWarrior" maxlength="16">
+                </div>
+                <div style="display:flex; gap:15px; justify-content:center; margin-top:20px;">
+                    <button class="menu-btn" id="mpHostBtn" style="background:#00ffaa; color:#000;">HOSTUJ POKÓJ</button>
+                    <button class="menu-btn" id="mpJoinViewBtn" style="background:#00ffff; color:#000;">DOŁĄCZ DO POKOJU</button>
+                </div>
+            </div>
+
+            <div id="mp-step-join" style="display:none;">
+                <div class="mp-input-group">
+                    <label for="mp-code-input">KOD POKOJU (ROOM CODE):</label>
+                    <input type="text" id="mp-code-input" class="mp-input" placeholder="Wpisz np. CYBER-7X9A" style="text-transform:uppercase;">
+                </div>
+                <button class="menu-btn" id="mpConnectBtn" style="background:#00ffaa; color:#000; margin-top:10px;">POŁĄCZ</button>
+                <button class="menu-btn" id="mpBackToSetupBtn" style="margin-top:10px;">POWRÓT</button>
+            </div>
+
+            <div id="mp-step-lobby" style="display:none;">
+                <div class="mp-lobby-box">
+                    <div style="color:#aaa; font-size:0.9rem;">KOD POKOJU (UDOSTĘPNIJ GRACZOM):</div>
+                    <div id="mp-room-code" class="mp-room-code-display">ŁĄCZENIE...</div>
+                    <div id="mp-lobby-status" style="color:#00ffaa; font-size:0.95rem; margin-bottom:10px;">Inicjalizacja węzła PeerJS...</div>
+                    
+                    <div style="text-align:left; color:#00ffaa; font-size:0.9rem; margin-top:10px;">TRYB GRY (WYBIERA HOST):</div>
+                    <div class="mp-mode-select" id="mp-mode-selector">
+                        <button class="mp-mode-btn active" data-mode="1v1v1v1">1v1v1v1 (FFA)</button>
+                        <button class="mp-mode-btn" data-mode="2v2">2v2 (DRUŻYNY)</button>
+                        <button class="mp-mode-btn" data-mode="3v1">3v1 (JUGGERNAUT)</button>
+                    </div>
+
+                    <div style="text-align:left; color:#00ffaa; font-size:0.9rem;">GRACZE W POKOJU (<span id="mp-player-count">1</span>/4):</div>
+                    <div id="mp-player-list" class="mp-player-list"></div>
+                </div>
+
+                <button class="menu-btn" id="mpStartGameBtn" style="background:#ff0055; color:#fff; display:none;">ROZPOCZNIJ WALKĘ PVP</button>
+                <button class="menu-btn" id="mpLeaveLobbyBtn">OPUŚĆ POKÓJ</button>
+            </div>
+
+            <button class="menu-btn" id="backFromMpBtn" style="margin-top:15px;">MAIN MENU</button>
         </div>
 
         <div id="unlock-screen" class="menu-panel hidden">
@@ -630,6 +820,27 @@
             <button class="menu-btn" id="backFromSettingsBtn">BACK</button>
         </div>
         <button class="menu-btn" id="startBtn">INITIATE PROTOCOL</button>
+    </div>
+
+    <!-- SCOREBOARD OVERLAY [TAB] -->
+    <div id="scoreboard-overlay">
+        <h2 id="sb-title">MULTIPLAYER SCOREBOARD</h2>
+        <div id="sb-mode-info" style="color:#ffaa00; text-align:center; font-size:0.95rem; margin-bottom:10px;">TRYB: 1v1v1v1 (FFA)</div>
+        <table class="scoreboard-table">
+            <thead>
+                <tr>
+                    <th>NICKNAME</th>
+                    <th>DRUŻYNA</th>
+                    <th>ZABÓJSTWA (K)</th>
+                    <th>ZGONY (D)</th>
+                    <th>K/D</th>
+                    <th>OBRAŻENIA</th>
+                    <th>STATUS</th>
+                </tr>
+            </thead>
+            <tbody id="scoreboard-rows">
+            </tbody>
+        </table>
     </div>
 
     <div id="pause-menu">
@@ -1154,7 +1365,7 @@
                 flying: { path: 'models/enemy/fly_model.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             spitter: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                ground: { path: 'models/enemy/spider.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
                 flying: { path: 'models/enemy/fly_model.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             shield: {
@@ -1162,7 +1373,7 @@
                 flying: { path: '', rotationY: Math.PI, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             buffer: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                ground: { path: 'models/enemy/robot.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
                 flying: { path: 'models/enemy/fly_model.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             kamikaze: {
@@ -1170,7 +1381,7 @@
                 flying: { path: 'models/enemy/mechanical_wasp.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             dodger: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                ground: { path: 'models/enemy/spider.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
                 flying: { path: 'models/enemy/fly_model.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             bruiser: {
@@ -1178,12 +1389,12 @@
                 flying: { path: 'models/enemy/fly_model.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             stalker: {
-                ground: { path: 'models/enemy/zombie.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
+                ground: { path: 'models/enemy/necromancer.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
                 flying: { path: 'models/enemy/fly_model.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             necromancer: {
                 ground: { path: 'models/enemy/necromancer.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
-                flying: { path: 'models/enemy/necromancer.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 }
+                flying: { path: 'models/enemy/fly_model.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 }
             },
             bossTitan: {
                 ground: { path: 'models/enemy/zombie.glb', rotationY: -3, rotationX: 0, rotationZ: 0, scale: 1.0 },
@@ -2271,7 +2482,11 @@
             const groundKey = `${type}Ground`;
 
             if (canFly && loadedModels[flightKey]) return flightKey;
+            if (canFly && loadedModels.kamikazeFlying) return 'kamikazeFlying';
+            if (canFly && loadedModels.normalFlying) return 'normalFlying';
             if (!canFly && loadedModels[groundKey]) return groundKey;
+            if (loadedModels[flightKey]) return flightKey;
+            if (loadedModels[groundKey]) return groundKey;
             return null;
         }
 
@@ -2687,8 +2902,558 @@
             if (mainFovValue) mainFovValue.innerText = playerFov;
         }
 
+        // =====================================================================
+        // MULTIPLAYER PVP SYSTEM (PeerJS WebRTC)
+        // =====================================================================
+        let isPvPMode = false;
+        let peer = null;
+        let peerConnections = {}; // peerId -> DataConnection
+        let localPlayerId = null;
+        let roomCode = null;
+        let isHost = false;
+        let mpSelectedMode = '1v1v1v1'; // '1v1v1v1', '2v2', '3v1'
+        let localNickname = 'CyberWarrior';
+        
+        let lobbyPlayers = []; // [{ id, name, isHost, team: 1|2, kills:0, deaths:0, damage:0, ping:0 }]
+        let remotePlayers = {}; // peerId -> { id, name, team, mesh, hpBar, nameSprite, hp, maxHp, isDead, boundingBox, position, rotationY }
+
+        let localPvPHp = 100;
+        let localPvPMaxHp = 100;
+        let localPvPKills = 0;
+        let localPvPDeaths = 0;
+        let localPvPDamage = 0;
+        let isLocalPvPDead = false;
+        let localRespawnTimer = 0;
+        let netSyncInterval = null;
+
+        const PVP_SPAWN_POINTS = [
+            { x: -30, y: 2, z: -30 },
+            { x: 30, y: 2, z: 30 },
+            { x: -30, y: 2, z: 30 },
+            { x: 30, y: 2, z: -30 }
+        ];
+
+        function generateRoomCode() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = '';
+            for (let i = 0; i < 4; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return 'CYBER-' + code;
+        }
+
+        function initPeerJS(customPeerId, callback) {
+            if (peer) {
+                try { peer.destroy(); } catch(e){}
+            }
+            peer = customPeerId ? new Peer(customPeerId) : new Peer();
+
+            peer.on('open', (id) => {
+                localPlayerId = id;
+                if (callback) callback(null, id);
+            });
+
+            peer.on('error', (err) => {
+                console.error('[PEERJS ERROR]', err);
+                if (callback) callback(err, null);
+            });
+
+            peer.on('connection', (conn) => {
+                setupDataConnection(conn);
+            });
+        }
+
+        function setupDataConnection(conn) {
+            peerConnections[conn.peer] = conn;
+
+            conn.on('open', () => {
+                console.log('[NET] Połączono z graczem:', conn.peer);
+                if (isHost) {
+                    broadcastLobbyState();
+                }
+            });
+
+            conn.on('data', (data) => {
+                handleNetworkMessage(conn.peer, data);
+            });
+
+            conn.on('close', () => {
+                console.log('[NET] Gracza rozłączono:', conn.peer);
+                delete peerConnections[conn.peer];
+                removeRemotePlayerMesh(conn.peer);
+                lobbyPlayers = lobbyPlayers.filter(p => p.id !== conn.peer);
+                if (isHost) broadcastLobbyState();
+                updateLobbyUI();
+            });
+        }
+
+        function broadcastNetworkData(data) {
+            Object.values(peerConnections).forEach(conn => {
+                if (conn && conn.open) {
+                    conn.send(data);
+                }
+            });
+        }
+
+        function handleNetworkMessage(senderPeerId, data) {
+            if (!data || !data.type) return;
+
+            if (data.type === 'lobby_join') {
+                if (isHost) {
+                    if (lobbyPlayers.length >= 4) {
+                        const conn = peerConnections[senderPeerId];
+                        if (conn) conn.send({ type: 'error', msg: 'Pokój jest pełny! (Max 4 graczy)' });
+                        return;
+                    }
+                    let team = 1;
+                    if (mpSelectedMode === '2v2') {
+                        const team1Count = lobbyPlayers.filter(p => p.team === 1).length;
+                        const team2Count = lobbyPlayers.filter(p => p.team === 2).length;
+                        team = team1Count <= team2Count ? 1 : 2;
+                    } else if (mpSelectedMode === '3v1') {
+                        const juggExists = lobbyPlayers.some(p => p.team === 2);
+                        team = juggExists ? 1 : 2;
+                    }
+
+                    lobbyPlayers.push({
+                        id: senderPeerId,
+                        name: data.name || 'CyberRider',
+                        isHost: false,
+                        team: team,
+                        kills: 0,
+                        deaths: 0,
+                        damage: 0,
+                        ping: 30
+                    });
+                    broadcastLobbyState();
+                }
+            } else if (data.type === 'lobby_state') {
+                lobbyPlayers = data.players || [];
+                mpSelectedMode = data.mode || '1v1v1v1';
+                updateLobbyUI();
+            } else if (data.type === 'start_match') {
+                startPvPMatchClient(data);
+            } else if (data.type === 'player_tick') {
+                updateRemotePlayerState(senderPeerId, data);
+            } else if (data.type === 'pvp_shoot') {
+                spawnRemotePlayerBullet(senderPeerId, data);
+            } else if (data.type === 'pvp_damage') {
+                if (data.targetId === localPlayerId) {
+                    takePvPDamage(data.damage, data.attackerId, data.attackerName);
+                }
+            } else if (data.type === 'pvp_kill') {
+                if (data.killerId === localPlayerId) {
+                    localPvPKills++;
+                    cyberAudio.playHitmarker();
+                }
+                const victim = lobbyPlayers.find(p => p.id === data.victimId);
+                const killer = lobbyPlayers.find(p => p.id === data.killerId);
+                if (victim) victim.deaths++;
+                if (killer) killer.kills++;
+                updateScoreboardRows();
+            }
+        }
+
+        function broadcastLobbyState() {
+            broadcastNetworkData({
+                type: 'lobby_state',
+                players: lobbyPlayers,
+                mode: mpSelectedMode
+            });
+            updateLobbyUI();
+        }
+
+        function updateLobbyUI() {
+            const codeEl = document.getElementById('mp-room-code');
+            const statusEl = document.getElementById('mp-lobby-status');
+            const countEl = document.getElementById('mp-player-count');
+            const listEl = document.getElementById('mp-player-list');
+            const startBtn = document.getElementById('mpStartGameBtn');
+            const modeSelector = document.getElementById('mp-mode-selector');
+
+            if (codeEl) codeEl.textContent = roomCode || '---';
+            if (countEl) countEl.textContent = lobbyPlayers.length;
+            if (statusEl) statusEl.textContent = isHost ? 'Jesteś Hostem pokoju! Oczekiwanie na graczy...' : 'Połączono z Hostem!';
+
+            if (startBtn) {
+                startBtn.style.display = (isHost && lobbyPlayers.length >= 2) ? 'block' : 'none';
+            }
+
+            if (modeSelector) {
+                Array.from(modeSelector.children).forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.mode === mpSelectedMode);
+                    btn.disabled = !isHost;
+                });
+            }
+
+            if (listEl) {
+                listEl.innerHTML = '';
+                lobbyPlayers.forEach(p => {
+                    const item = document.createElement('div');
+                    item.className = `mp-player-item team-${p.team}`;
+                    const teamName = mpSelectedMode === '1v1v1v1' ? 'FFA' : (mpSelectedMode === '3v1' ? (p.team === 2 ? 'JUGGERNAUT' : 'HUNTER') : `DRUŻYNA ${p.team}`);
+                    item.innerHTML = `
+                        <span>${p.isHost ? '★ ' : ''}${p.name} (${p.id.slice(-4)})</span>
+                        <span style="color:${p.team === 2 ? '#ff00ff' : '#00ffff'}; font-size:0.85rem;">[${teamName}]</span>
+                    `;
+                    listEl.appendChild(item);
+                });
+            }
+        }
+
+        function createRemotePlayerMesh(peerId, name, team) {
+            if (remotePlayers[peerId]) return;
+            const group = new THREE.Group();
+            
+            let avatarMesh;
+            const modelKey = (team === 2) ? 'bruiserGround' : 'necromancerGround';
+            if (loadedModels[modelKey]) {
+                avatarMesh = loadedModels[modelKey].clone(true);
+            } else if (loadedModels['normalGround']) {
+                avatarMesh = loadedModels['normalGround'].clone(true);
+            } else {
+                avatarMesh = createProceduralEnemyMesh('fast');
+            }
+            group.add(avatarMesh);
+
+            const discGeo = new THREE.RingGeometry(0.8, 1.1, 16);
+            const discMat = new THREE.MeshBasicMaterial({
+                color: team === 2 ? 0xff00ff : 0x00ffff,
+                side: THREE.DoubleSide
+            });
+            const disc = new THREE.Mesh(discGeo, discMat);
+            disc.rotation.x = Math.PI / 2;
+            disc.position.y = 0.05;
+            group.add(disc);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = team === 2 ? '#ff00ff' : '#00ffff';
+            ctx.font = 'Bold 22px Courier New';
+            ctx.textAlign = 'center';
+            ctx.fillText(name.toUpperCase(), 128, 40);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMat = new THREE.SpriteMaterial({ map: texture });
+            const nameSprite = new THREE.Sprite(spriteMat);
+            nameSprite.scale.set(3, 0.75, 1);
+            nameSprite.position.y = 3.2;
+            group.add(nameSprite);
+
+            const hpBar = createHPBar();
+            hpBar.position.y = 2.6;
+            group.add(hpBar);
+
+            scene.add(group);
+
+            remotePlayers[peerId] = {
+                id: peerId,
+                name: name,
+                team: team,
+                mesh: group,
+                hpBar: hpBar,
+                nameSprite: nameSprite,
+                hp: 100,
+                maxHp: 100,
+                isDead: false,
+                boundingBox: new THREE.Box3(),
+                position: new THREE.Vector3(),
+                rotationY: 0
+            };
+        }
+
+        function removeRemotePlayerMesh(peerId) {
+            if (remotePlayers[peerId]) {
+                scene.remove(remotePlayers[peerId].mesh);
+                delete remotePlayers[peerId];
+            }
+        }
+
+        function updateRemotePlayerState(peerId, data) {
+            let p = remotePlayers[peerId];
+            if (!p) {
+                const lp = lobbyPlayers.find(x => x.id === peerId);
+                const team = lp ? lp.team : 1;
+                const name = lp ? lp.name : 'RemotePlayer';
+                createRemotePlayerMesh(peerId, name, team);
+                p = remotePlayers[peerId];
+            }
+            if (!p) return;
+
+            p.position.set(data.x, data.y, data.z);
+            p.mesh.position.copy(p.position);
+            p.mesh.rotation.y = data.rotY || 0;
+            p.hp = data.hp;
+            p.maxHp = data.maxHp || 100;
+            p.isDead = !!data.isDead;
+            p.mesh.visible = !p.isDead;
+
+            if (p.hpBar) {
+                const ratio = Math.max(0, p.hp / p.maxHp);
+                const fg = p.hpBar.getObjectByName('hpFg');
+                if (fg) fg.scale.x = ratio;
+            }
+
+            p.boundingBox.setFromCenterAndSize(
+                new THREE.Vector3(data.x, data.y + 1.2, data.z),
+                new THREE.Vector3(1.2, 2.4, 1.2)
+            );
+        }
+
+        function spawnRemotePlayerBullet(peerId, data) {
+            const mat = new THREE.MeshBasicMaterial({ color: data.color || 0x00ffff });
+            const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), mat);
+            bullet.position.set(data.ox, data.oy, data.oz);
+            bullet.userData = {
+                velocity: new THREE.Vector3(data.dx, data.dy, data.dz).multiplyScalar(data.speed || 35),
+                damage: data.damage || 20,
+                ownerPeerId: peerId,
+                isPvP: true,
+                life: 2.0
+            };
+            scene.add(bullet);
+            bullets.push(bullet);
+        }
+
+        function takePvPDamage(damage, attackerId, attackerName) {
+            if (isLocalPvPDead) return;
+            localPvPHp -= damage;
+            stats.hp = Math.max(0, localPvPHp);
+            updateHUD();
+            cyberAudio.playPlayerHurt();
+
+            if (localPvPHp <= 0) {
+                isLocalPvPDead = true;
+                localPvPDeaths++;
+                localRespawnTimer = 3.0;
+                broadcastNetworkData({
+                    type: 'pvp_kill',
+                    killerId: attackerId,
+                    victimId: localPlayerId
+                });
+                const notice = document.getElementById('wave-notice');
+                if (notice) {
+                    notice.innerText = `ZOSTAŁEŚ ZABITY PRZEZ ${attackerName || 'GRACZA'}! RESPAWN ZA 3s...`;
+                    notice.style.color = '#ff0055';
+                    notice.style.display = 'block';
+                }
+            }
+        }
+
+        function respawnLocalPlayerPvP() {
+            isLocalPvPDead = false;
+            localPvPHp = localPvPMaxHp;
+            stats.hp = localPvPMaxHp;
+            const spawn = PVP_SPAWN_POINTS[Math.floor(Math.random() * PVP_SPAWN_POINTS.length)];
+            camera.position.set(spawn.x, spawn.y, spawn.z);
+            updateHUD();
+            const notice = document.getElementById('wave-notice');
+            if (notice) notice.style.display = 'none';
+        }
+
+        function startPvPMatchHost() {
+            if (!isHost) return;
+            broadcastNetworkData({ type: 'start_match', players: lobbyPlayers, mode: mpSelectedMode });
+            startPvPMatchClient({ players: lobbyPlayers, mode: mpSelectedMode });
+        }
+
+        function startPvPMatchClient(data) {
+            isPvPMode = true;
+            gameStarted = true;
+            enemies = [];
+
+            const localIdx = lobbyPlayers.findIndex(p => p.id === localPlayerId);
+            const spawn = PVP_SPAWN_POINTS[localIdx >= 0 ? localIdx % PVP_SPAWN_POINTS.length : 0];
+            camera.position.set(spawn.x, spawn.y, spawn.z);
+            localPvPHp = 100;
+            localPvPMaxHp = 100;
+            stats.hp = 100;
+            stats.maxHp = 100;
+
+            document.getElementById('overlay').style.display = 'none';
+            document.body.requestPointerLock();
+            clock.start();
+
+            Object.keys(remotePlayers).forEach(id => removeRemotePlayerMesh(id));
+            lobbyPlayers.forEach(p => {
+                if (p.id !== localPlayerId) {
+                    createRemotePlayerMesh(p.id, p.name, p.team);
+                }
+            });
+
+            if (netSyncInterval) clearInterval(netSyncInterval);
+            netSyncInterval = setInterval(sendLocalPlayerTick, 33);
+        }
+
+        function sendLocalPlayerTick() {
+            if (!isPvPMode) return;
+            broadcastNetworkData({
+                type: 'player_tick',
+                x: camera.position.x,
+                y: camera.position.y - 1.7,
+                z: camera.position.z,
+                rotY: camera.rotation.y,
+                hp: localPvPHp,
+                maxHp: localPvPMaxHp,
+                isDead: isLocalPvPDead
+            });
+        }
+
+        function showScoreboardOverlay() {
+            updateScoreboardRows();
+            const el = document.getElementById('scoreboard-overlay');
+            if (el) el.style.display = 'block';
+        }
+
+        function hideScoreboardOverlay() {
+            const el = document.getElementById('scoreboard-overlay');
+            if (el) el.style.display = 'none';
+        }
+
+        function updateScoreboardRows() {
+            const tbody = document.getElementById('scoreboard-rows');
+            const infoEl = document.getElementById('sb-mode-info');
+            if (!tbody) return;
+
+            if (infoEl) infoEl.innerText = `TRYB: ${mpSelectedMode.toUpperCase()} | PVP ARENA`;
+
+            tbody.innerHTML = '';
+            const sorted = [...lobbyPlayers].sort((a, b) => b.kills - a.kills);
+            sorted.forEach(p => {
+                const tr = document.createElement('tr');
+                const isLocal = (p.id === localPlayerId);
+                tr.className = `team-${p.team} ${isLocal ? 'is-local' : ''}`;
+                
+                const kd = p.deaths === 0 ? p.kills : (p.kills / p.deaths).toFixed(1);
+                const teamName = mpSelectedMode === '1v1v1v1' ? 'FFA' : (p.team === 2 ? 'TEAM 2' : 'TEAM 1');
+                const isDeadStr = (isLocal && isLocalPvPDead) || (remotePlayers[p.id] && remotePlayers[p.id].isDead) ? '<span style="color:#ff0055;">ZABITY</span>' : '<span style="color:#00ffaa;">ŻYWY</span>';
+
+                tr.innerHTML = `
+                    <td style="text-align:left;">${p.name} ${isLocal ? ' (TY)' : ''}</td>
+                    <td><span class="${p.team === 2 ? 'team-badge-magenta' : 'team-badge-cyan'}">${teamName}</span></td>
+                    <td style="color:#00ffaa; font-weight:bold;">${p.kills}</td>
+                    <td style="color:#ff0055;">${p.deaths}</td>
+                    <td>${kd}</td>
+                    <td>${p.damage || 0}</td>
+                    <td>${isDeadStr}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function setupMultiplayerUI() {
+            const nickInput = document.getElementById('mp-nickname-input');
+            if (nickInput) nickInput.value = localNickname;
+
+            const mpBtn = document.getElementById('mpMenuBtn');
+            if (mpBtn) mpBtn.onclick = () => showOverlayPanel('multiplayer-screen');
+            
+            const backBtn = document.getElementById('backFromMpBtn');
+            if (backBtn) backBtn.onclick = () => showOverlayPanel('main-menu');
+
+            document.getElementById('mpHostBtn').onclick = () => {
+                localNickname = nickInput.value || 'HostPlayer';
+                roomCode = generateRoomCode();
+                isHost = true;
+
+                document.getElementById('mp-step-setup').style.display = 'none';
+                document.getElementById('mp-step-join').style.display = 'none';
+                document.getElementById('mp-step-lobby').style.display = 'block';
+
+                lobbyPlayers = [{
+                    id: 'HOST',
+                    name: localNickname,
+                    isHost: true,
+                    team: 1,
+                    kills: 0,
+                    deaths: 0,
+                    damage: 0,
+                    ping: 0
+                }];
+
+                initPeerJS(roomCode, (err, id) => {
+                    if (err) {
+                        document.getElementById('mp-lobby-status').innerText = 'BŁĄD PEERJS: Kod zajęty! Spróbuj ponownie.';
+                        return;
+                    }
+                    localPlayerId = id;
+                    lobbyPlayers[0].id = id;
+                    updateLobbyUI();
+                });
+            };
+
+            document.getElementById('mpJoinViewBtn').onclick = () => {
+                document.getElementById('mp-step-setup').style.display = 'none';
+                document.getElementById('mp-step-join').style.display = 'block';
+            };
+
+            document.getElementById('mpBackToSetupBtn').onclick = () => {
+                document.getElementById('mp-step-setup').style.display = 'block';
+                document.getElementById('mp-step-join').style.display = 'none';
+            };
+
+            document.getElementById('mpConnectBtn').onclick = () => {
+                const code = (document.getElementById('mp-code-input').value || '').trim().toUpperCase();
+                if (!code) return;
+                localNickname = nickInput.value || 'ClientPlayer';
+                isHost = false;
+                roomCode = code.startsWith('CYBER-') ? code : 'CYBER-' + code;
+
+                document.getElementById('mp-step-join').style.display = 'none';
+                document.getElementById('mp-step-lobby').style.display = 'block';
+                document.getElementById('mp-lobby-status').innerText = 'Łączenie z hostem ' + roomCode + '...';
+
+                initPeerJS(null, (err, myId) => {
+                    if (err) {
+                        document.getElementById('mp-lobby-status').innerText = 'BŁĄD PEERJS przy połączeniu.';
+                        return;
+                    }
+                    localPlayerId = myId;
+                    const conn = peer.connect(roomCode);
+                    setupDataConnection(conn);
+
+                    conn.on('open', () => {
+                        conn.send({ type: 'lobby_join', name: localNickname });
+                    });
+                });
+            };
+
+            document.getElementById('mpStartGameBtn').onclick = () => {
+                if (isHost) startPvPMatchHost();
+            };
+
+            document.getElementById('mpLeaveLobbyBtn').onclick = () => {
+                if (peer) { peer.destroy(); peer = null; }
+                isHost = false;
+                isPvPMode = false;
+                lobbyPlayers = [];
+                document.getElementById('mp-step-setup').style.display = 'block';
+                document.getElementById('mp-step-join').style.display = 'none';
+                document.getElementById('mp-step-lobby').style.display = 'none';
+            };
+
+            const selector = document.getElementById('mp-mode-selector');
+            if (selector) {
+                Array.from(selector.children).forEach(btn => {
+                    btn.onclick = () => {
+                        if (!isHost) return;
+                        mpSelectedMode = btn.dataset.mode;
+                        lobbyPlayers.forEach((p, idx) => {
+                            if (mpSelectedMode === '2v2') p.team = (idx % 2 === 0) ? 1 : 2;
+                            else if (mpSelectedMode === '3v1') p.team = (idx === 0) ? 2 : 1;
+                            else p.team = 1;
+                        });
+                        broadcastLobbyState();
+                    };
+                });
+            }
+        }
+
         function setupMainMenuButtons() {
+            setupMultiplayerUI();
             document.getElementById('playBtn').onclick = () => {
+                isPvPMode = false;
                 cyberAudio.init();
                 cyberAudio.setMusicState('wave');
                 resetRunForCharacter();
@@ -3586,12 +4351,18 @@
             // Keyboard input — movement WASD, jump, weapons, abilities, dev console
             window.onkeydown = (e) => {
                 // Prevent default browser shortcuts (Ctrl+W, Ctrl+S, Ctrl+Space, Tab, etc.)
-                if (e.ctrlKey || e.altKey || e.key === 'Tab') {
-                    if (['w', 'a', 's', 'd', 'r', 'f', 'v', 'q', ' ', 'tab'].includes(e.key.toLowerCase()) || e.ctrlKey) {
+                if (e.ctrlKey || e.altKey || e.key === 'Tab' || e.code === 'Tab') {
+                    if (['w', 'a', 's', 'd', 'r', 'f', 'v', 'q', ' ', 'tab'].includes(e.key.toLowerCase()) || e.ctrlKey || e.key === 'Tab' || e.code === 'Tab') {
                         if (e.key.toLowerCase() !== 'f12' && e.key.toLowerCase() !== 'f5') {
                             e.preventDefault();
                         }
                     }
+                }
+
+                if (e.key === 'Tab' || e.code === 'Tab') {
+                    e.preventDefault();
+                    if (isPvPMode) showScoreboardOverlay();
+                    return;
                 }
 
                 if (e.key === '`' || e.key === '~' || e.code === 'Backquote') {
@@ -3684,6 +4455,10 @@
                 const k = e.key.toLowerCase();
                 if (k === 'w') move.f = false; if (k === 's') move.b = false;
                 if (k === 'a') move.l = false; if (k === 'd') move.r = false;
+                if (e.key === 'Tab' || e.code === 'Tab') {
+                    e.preventDefault();
+                    hideScoreboardOverlay();
+                }
             };
 
             camera.rotation.order = 'YXZ';
@@ -3951,6 +4726,7 @@
         }
 
         function startWave(waveNum) {
+            if (isPvPMode) return;
             currentWave = waveNum;
             document.getElementById('wave-num').innerText = currentWave;
             document.getElementById('boss-hud').style.display = 'none';
@@ -4071,7 +4847,7 @@
         // ZMIANA TEJ FUNKCJI: `spawnEnemy(typeOverride, options)` dopuszcza jawne odtworzenie konkretnego typu - używa go `necromancer` do wywołania konkretnej "summon" minionów.
         // CO TO DAJE: runtime nie zdaje się już na przypadkowy `flyingChance` dla wszystkich klas. Kiedy masz model `flying` dla danego typu, możesz go aktywować przez `options.canFly = true`.
         function spawnEnemy(typeOverride = null, options = {}) {
-            if (stats.dead) return;
+            if (isPvPMode || stats.dead) return;
 
             const typeTemplates = {
                 necromancer: { baseHp: 7, speed: 2.0, scale: 2.6 },
@@ -4399,6 +5175,17 @@
             };
             scene.add(bullet);
             bullets.push(bullet);
+
+            if (isPvPMode) {
+                broadcastNetworkData({
+                    type: 'pvp_shoot',
+                    ox: spawnPos.x, oy: spawnPos.y, oz: spawnPos.z,
+                    dx: direction.x, dy: direction.y, dz: direction.z,
+                    speed: options.speed || w.speed,
+                    damage: options.damage || getWeaponDamage(w),
+                    color: w.color || '#00ffff'
+                });
+            }
         }
 
         function fireWeaponProjectiles(w, spawnPos, direction) {
@@ -5052,6 +5839,13 @@
             const delta = Math.min(clock.getDelta(), 0.05);
             const enemyDelta = isBuffActive('bulletTime') ? delta * 0.42 : delta;
 
+            if (isPvPMode && isLocalPvPDead) {
+                localRespawnTimer -= delta;
+                if (localRespawnTimer <= 0) {
+                    respawnLocalPlayerPvP();
+                }
+            }
+
             abilityCooldownTimer = Math.max(0, abilityCooldownTimer - delta);
             meleeCooldownTimer = Math.max(0, meleeCooldownTimer - delta);
 
@@ -5462,6 +6256,31 @@
                 for (let oil of oilSlicks) {
                     if (!oil.userData.isSpent && segmentHitsGroundDisc(prevPosition, b.position, oil.position, 2.0)) {
                         igniteOilSlick(oil);
+                    }
+                }
+
+                if (isPvPMode && bullets[i]) {
+                    const localTeam = lobbyPlayers.find(p => p.id === localPlayerId)?.team;
+                    for (let rpId in remotePlayers) {
+                        const rp = remotePlayers[rpId];
+                        if (!rp || rp.isDead) continue;
+                        if (mpSelectedMode === '2v2' && localTeam === rp.team) continue;
+
+                        if (rp.boundingBox && rp.boundingBox.containsPoint(b.position)) {
+                            const dmg = Math.round(b.userData.damage || 25);
+                            localPvPDamage += dmg;
+                            cyberAudio.playHitmarker();
+                            broadcastNetworkData({
+                                type: 'pvp_damage',
+                                targetId: rp.id,
+                                damage: dmg,
+                                attackerId: localPlayerId,
+                                attackerName: localNickname
+                            });
+                            scene.remove(b);
+                            bullets.splice(i, 1);
+                            break;
+                        }
                     }
                 }
 
