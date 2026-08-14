@@ -2973,23 +2973,42 @@
         }
 
         function initPeerJS(customPeerId, callback) {
+            // Zawsze zaczynamy od czystego połączenia. Nie wywołujemy callbacka
+            // zanim PeerJS faktycznie nie połączy się z serwerem sygnalizacyjnym.
             if (peer) {
                 try { peer.destroy(); } catch(e){}
             }
+            peer = null;
+            peerConnections = {};
 
             const formattedId = customPeerId ? cleanPeerId(customPeerId) : null;
             const peerOptions = {
+                debug: 1,
+                secure: true,
                 config: {
                     iceServers: [
+                        // STUN — szybkie połączenie P2P, gdy router na to pozwala.
                         { urls: 'stun:stun.l.google.com:19302' },
                         { urls: 'stun:stun1.l.google.com:19302' },
                         { urls: 'stun:stun2.l.google.com:19302' },
                         { urls: 'stun:stun3.l.google.com:19302' },
-                        { urls: 'stun:stun4.l.google.com:19302' },
-                        { urls: 'stun:stun.services.mozilla.com' },
-                        { urls: 'stun:global.stun.twilio.com:3478' }
-                    ]
+                        // TURN — awaryjny relay, dzięki któremu WebRTC może działać
+                        // także za bardziej restrykcyjnymi NAT/firewallami.
+                        { urls: 'stun:openrelay.metered.ca:80' },
+                        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+                        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+                        { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+                        { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+                    ],
+                    iceTransportPolicy: 'all'
                 }
+            };
+
+            let callbackCalled = false;
+            const finish = (err, id) => {
+                if (callbackCalled) return;
+                callbackCalled = true;
+                if (callback) callback(err || null, id || localPlayerId);
             };
 
             try {
@@ -2997,30 +3016,43 @@
             } catch(e) {
                 console.warn('[PEERJS INIT EXCEPTION]', e);
                 peer = null;
+                finish(e, localPlayerId);
+                return;
             }
 
             if (!localPlayerId) {
                 localPlayerId = 'p_' + Math.random().toString(36).substr(2, 6);
             }
 
-            if (peer) {
-                peer.on('open', (id) => {
-                    localPlayerId = id;
-                    console.log('[PEERJS OPEN] Local Peer ID:', id);
-                    if (callback) callback(null, id);
-                });
+            peer.on('open', (id) => {
+                localPlayerId = id;
+                console.log('[PEERJS OPEN] Local Peer ID:', id);
+                finish(null, id);
+            });
 
-                peer.on('error', (err) => {
-                    console.warn('[PEERJS WARNING]', err);
-                    if (callback) callback(null, localPlayerId);
-                });
+            peer.on('error', (err) => {
+                console.warn('[PEERJS WARNING]', err);
+                const code = err && err.type ? err.type : 'unknown';
+                if (code === 'unavailable-id' && isHost) {
+                    // Bardzo rzadki przypadek: wygenerowany kod jest już zajęty.
+                    // Nie zostawiamy hosta w nieskończonym „inicjalizowaniu”.
+                    finish(err, localPlayerId);
+                } else if (code === 'peer-unavailable') {
+                    // Dla klienta obsługujemy to osobno w tryConnect().
+                    console.warn('[NET] Host jeszcze nie jest dostępny. Ponawiam połączenie.');
+                } else if (!callbackCalled) {
+                    finish(err, localPlayerId);
+                }
+            });
 
-                peer.on('connection', (conn) => {
-                    setupDataConnection(conn);
-                });
-            } else {
-                if (callback) callback(null, localPlayerId);
-            }
+            peer.on('disconnected', () => {
+                console.warn('[PEERJS] Rozłączono z serwerem sygnalizacyjnym. Próba ponownego połączenia...');
+                try { if (peer && !peer.destroyed) peer.reconnect(); } catch(e) {}
+            });
+
+            peer.on('connection', (conn) => {
+                setupDataConnection(conn);
+            });
         }
 
         function setupDataConnection(conn) {
@@ -3030,12 +3062,17 @@
             conn.on('open', () => {
                 console.log('[NET] Połączono z graczem:', conn.peer);
                 if (isHost) {
+                    // Host natychmiast wysyła aktualny stan lobby nowemu klientowi.
                     broadcastLobbyState();
                 }
             });
 
             conn.on('data', (data) => {
                 handleNetworkMessage(conn.peer, data);
+            });
+
+            conn.on('error', (err) => {
+                console.warn('[NET] Błąd DataConnection:', conn.peer, err);
             });
 
             conn.on('close', () => {
@@ -3496,8 +3533,15 @@
                 }];
 
                 initPeerJS(roomCode, (err, id) => {
-                    localPlayerId = id || roomCode;
+                    localPlayerId = id || cleanPeerId(roomCode);
                     lobbyPlayers[0].id = localPlayerId;
+                    if (err) {
+                        const status = document.getElementById('mp-lobby-status');
+                        if (status) {
+                            status.innerText = 'NIE MOŻNA UTWORZYĆ POKOJU. SPRÓBUJ PONOWNIE.';
+                            status.style.color = '#ff0055';
+                        }
+                    }
                     updateLobbyUI();
                 });
                 updateLobbyUI();
@@ -3525,29 +3569,80 @@
                 document.getElementById('mp-lobby-status').innerText = 'Łączenie z pokojem ' + roomCode + '...';
 
                 initPeerJS(null, (err, myId) => {
-                    localPlayerId = myId || 'p_' + Math.random().toString(36).substr(2, 6);
-                    
+                    if (err) {
+                        console.warn('[NET] Nie udało się uruchomić PeerJS:', err);
+                        const status = document.getElementById('mp-lobby-status');
+                        if (status) {
+                            status.innerText = 'BŁĄD POŁĄCZENIA Z SERWEREM. ODŚWIEŻ STRONĘ I SPRÓBUJ PONOWNIE.';
+                            status.style.color = '#ff0055';
+                        }
+                        return;
+                    }
+
+                    localPlayerId = myId || localPlayerId || ('p_' + Math.random().toString(36).substr(2, 6));
                     const targetPeerId = cleanPeerId(roomCode);
                     console.log('[NET] Łączenie z Host Peer ID:', targetPeerId);
-                    
+
                     let attempts = 0;
-                    function tryConnect() {
-                        attempts++;
-                        if (peer) {
-                            try {
-                                const conn = peer.connect(targetPeerId, { reliable: true });
-                                setupDataConnection(conn);
-                                conn.on('open', () => {
-                                    console.log('[NET] Połączono z Hostem WebRTC!');
-                                    conn.send({ type: 'lobby_join', name: localNickname });
-                                });
-                            } catch(e){}
+                    let connected = false;
+                    let retryTimer = null;
+                    const maxAttempts = 15;
+
+                    const updateConnectStatus = (text, color = '#00ffaa') => {
+                        const status = document.getElementById('mp-lobby-status');
+                        if (status) {
+                            status.innerText = text;
+                            status.style.color = color;
                         }
-                        broadcastNetworkData({ type: 'lobby_join', name: localNickname });
-                        if (attempts < 4 && !lobbyPlayers.some(p => p.id === localPlayerId && !p.isHost)) {
-                            setTimeout(tryConnect, 1200);
+                    };
+
+                    function tryConnect() {
+                        if (connected || !peer || peer.destroyed) return;
+                        attempts++;
+                        updateConnectStatus(`ŁĄCZENIE Z POKOJEM ${roomCode}... PRÓBA ${attempts}/${maxAttempts}`, '#ffff00');
+
+                        try {
+                            const conn = peer.connect(targetPeerId, {
+                                reliable: true,
+                                serialization: 'json'
+                            });
+                            setupDataConnection(conn);
+
+                            let opened = false;
+                            const openTimer = setTimeout(() => {
+                                if (!opened) {
+                                    try { conn.close(); } catch(e) {}
+                                }
+                            }, 6000);
+
+                            conn.on('open', () => {
+                                if (opened) return;
+                                opened = true;
+                                connected = true;
+                                clearTimeout(openTimer);
+                                console.log('[NET] Połączono z Hostem WebRTC!');
+                                updateConnectStatus('POŁĄCZONO Z HOSTEM! Oczekiwanie na grę...', '#00ffaa');
+                                try { conn.send({ type: 'lobby_join', name: localNickname }); } catch(e) {}
+                            });
+
+                            conn.on('error', () => {
+                                if (!opened) {
+                                    try { conn.close(); } catch(e) {}
+                                }
+                            });
+                        } catch(e) {
+                            console.warn('[NET] peer.connect exception:', e);
+                        }
+
+                        if (!connected && attempts < maxAttempts) {
+                            retryTimer = setTimeout(tryConnect, 1200);
+                        } else if (!connected && attempts >= maxAttempts) {
+                            updateConnectStatus('NIE UDAŁO SIĘ POŁĄCZYĆ. SPRAWDŹ KOD POKOJU I CZY HOST MA OTWARTĄ GRĘ.', '#ff0055');
                         }
                     }
+
+                    // Najważniejsze: próba połączenia zaczyna się dopiero po zdarzeniu
+                    // PeerJS „open”, więc nie wysyłamy lobby_join zanim PeerJS jest gotowy.
                     tryConnect();
                 });
             };
