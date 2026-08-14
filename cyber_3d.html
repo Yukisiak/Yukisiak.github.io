@@ -2188,6 +2188,10 @@
 
         let cannonGroup = null, cannonBarrelMesh = null, isMountedCannon = false, cannonShotsLeft = 20;
         let currentWave = 1, enemiesToSpawnInWave = 0, enemiesSpawnedInWave = 0, waveInProgress = false, currentBoss = null;
+        let activeWaveEvent = null;
+        let waveEventOriginalFogFar = null;
+        let waveEventOriginalFogNear = null;
+        let blackoutOverlay = null;
 
         let stats = { hp: 100, maxHp: 100, score: 0, scoreEarned: 0, kills: 0, shotsFired: 0, hits: 0, dead: false, currencyEarned: 0 };
         let isPaused = false, inShop = false, gameStarted = false;
@@ -2418,6 +2422,7 @@
 
         function getWeaponDelay(w) {
             let delay = Math.max(35, Math.floor(w.delay * (hasUpgrade('fireRate10') ? 0.9 : 1)));
+            if (activeWaveEvent === 'overcharge') delay = Math.max(25, Math.floor(delay * 0.55));
             if (isBuffActive('infiniteAmmo')) delay = Math.max(30, Math.floor(delay * 0.6));
             return delay;
         }
@@ -3406,9 +3411,29 @@
             stats.maxHp = 100;
             updateHUD();
 
-            document.getElementById('overlay').style.display = 'none';
-            document.body.requestPointerLock();
+            // Zamykamy menu natychmiast po otrzymaniu start_match.
+            // Nie uzależniamy startu meczu od requestPointerLock(), bo na kliencie
+            // wiadomość start_match przychodzi asynchronicznie i przeglądarka może
+            // odrzucić pointer lock jako brak bezpośredniej akcji użytkownika.
+            const overlay = document.getElementById('overlay');
+            if (overlay) overlay.style.display = 'none';
             clock.start();
+
+            // Pointer lock próbujemy tylko wtedy, gdy przeglądarka na to pozwala.
+            // Jeśli nie, pierwsze kliknięcie gracza w okno gry go aktywuje.
+            try {
+                if (!document.pointerLockElement && document.body.requestPointerLock) {
+                    document.body.requestPointerLock().catch(() => {});
+                }
+            } catch (e) {}
+            if (!window.__pvpPointerLockFallback) {
+                window.__pvpPointerLockFallback = true;
+                document.addEventListener('click', () => {
+                    if (isPvPMode && !document.pointerLockElement && document.body.requestPointerLock) {
+                        try { document.body.requestPointerLock(); } catch (e) {}
+                    }
+                });
+            }
 
             Object.keys(remotePlayers).forEach(id => removeRemotePlayerMesh(id));
             lobbyPlayers.forEach(p => {
@@ -3647,9 +3672,16 @@
                 });
             };
 
-            document.getElementById('mpStartGameBtn').onclick = () => {
-                if (isHost) startPvPMatchHost();
-            };
+                const pvpStartButton = document.getElementById('mpStartGameBtn');
+            if (pvpStartButton) {
+                pvpStartButton.onclick = (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (!isHost) return;
+                    // Host rozpoczyna lokalnie od razu i jednocześnie rozsyła start_match.
+                    startPvPMatchHost();
+                };
+            }
 
             document.getElementById('mpLeaveLobbyBtn').onclick = () => {
                 if (peer) { try { peer.destroy(); } catch(e){} peer = null; }
@@ -4964,6 +4996,49 @@
             document.getElementById('boss-hud').style.display = 'block';
         }
 
+        function setWaveEventOverlay(enabled) {
+            if (!blackoutOverlay) {
+                blackoutOverlay = document.createElement('div');
+                blackoutOverlay.id = 'blackout-overlay';
+                blackoutOverlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.82);pointer-events:none;z-index:7;display:none;transition:opacity .4s ease;';
+                document.body.appendChild(blackoutOverlay);
+            }
+            blackoutOverlay.style.display = enabled ? 'block' : 'none';
+            blackoutOverlay.style.opacity = enabled ? '1' : '0';
+        }
+
+        function chooseWaveEvent(waveNum, isBossWave) {
+            if (isBossWave || waveNum < 3 || waveNum % 3 !== 0) return null;
+            const events = ['bloodmoon', 'blackout', 'overcharge', 'hunter', 'double'];
+            return events[Math.floor(Math.random() * events.length)];
+        }
+
+        function applyWaveEventVisuals() {
+            if (!scene || !scene.fog) return;
+            if (waveEventOriginalFogFar === null) waveEventOriginalFogFar = scene.fog.far;
+            if (waveEventOriginalFogNear === null) waveEventOriginalFogNear = scene.fog.near;
+            if (activeWaveEvent === 'blackout') {
+                scene.fog.near = 1.5;
+                scene.fog.far = Math.min(scene.fog.far, 13);
+                setWaveEventOverlay(true);
+            } else {
+                scene.fog.near = waveEventOriginalFogNear;
+                scene.fog.far = waveEventOriginalFogFar;
+                setWaveEventOverlay(false);
+            }
+        }
+
+        function getWaveEventLabel() {
+            const labels = {
+                bloodmoon: '🌕 BLOOD MOON\nENEMIES FASTER • 2X REWARD',
+                blackout: '🌑 BLACKOUT\nVISIBILITY SEVERELY REDUCED',
+                overcharge: '⚡ OVERCHARGE\nWEAPONS FIRE MUCH FASTER',
+                hunter: '🏹 HUNTER WAVE\nFAST HUNTERS INBOUND!',
+                double: '☠ DOUBLE SPAWN\nTWICE AS MANY ENEMIES'
+            };
+            return labels[activeWaveEvent] || '';
+        }
+
         function startWave(waveNum) {
             if (isPvPMode) return;
             currentWave = waveNum;
@@ -4974,6 +5049,10 @@
 
             updateBiomeTheme();
             generateProceduralMap();
+            if (scene && scene.fog) {
+                waveEventOriginalFogFar = scene.fog.far;
+                waveEventOriginalFogNear = scene.fog.near;
+            }
 
             camera.position.set(0, 1.7, 0);
             playerVelY = 0;
@@ -4986,7 +5065,10 @@
             trySpawnCannon();
 
             const isBossWave = (currentWave % 5 === 0);
+            activeWaveEvent = chooseWaveEvent(currentWave, isBossWave);
+            applyWaveEventVisuals();
             hordeWaveActive = !isBossWave && currentWave >= 3 && (currentWave % 4 === 0 || Math.random() < 0.22);
+            if (activeWaveEvent === 'double') hordeWaveActive = false;
             lastPowerupSpawn = Date.now();
             const notice = document.getElementById('wave-notice');
 
@@ -4998,10 +5080,12 @@
                 notice.style.display = 'block';
                 setTimeout(() => { notice.style.display = 'none'; spawnBoss(); }, 2500);
             } else {
-                notice.innerText = hordeWaveActive ? "WAVE " + currentWave + "\nHORDE INBOUND!" : "WAVE " + currentWave;
-                notice.style.color = "#ffff00";
+                notice.innerText = activeWaveEvent ? ("WAVE " + currentWave + "\n" + getWaveEventLabel()) : (hordeWaveActive ? "WAVE " + currentWave + "\nHORDE INBOUND!" : "WAVE " + currentWave);
+                notice.style.color = activeWaveEvent === 'bloodmoon' ? '#ff3366' : (activeWaveEvent === 'overcharge' ? '#00ffff' : '#ffff00');
                 notice.style.display = 'block';
-                enemiesToSpawnInWave = Math.floor((5 + (currentWave - 1) * 4) * (hordeWaveActive ? 1.35 : 1));
+                let waveSizeMultiplier = hordeWaveActive ? 1.35 : 1;
+                if (activeWaveEvent === 'double') waveSizeMultiplier = 2;
+                enemiesToSpawnInWave = Math.floor((5 + (currentWave - 1) * 4) * waveSizeMultiplier);
                 enemiesSpawnedInWave = 0;
                 setTimeout(() => { notice.style.display = 'none'; }, 2000);
                 setTimeout(() => spawnTimedPowerup(), 3500);
@@ -5013,7 +5097,7 @@
                         const burst = hordeWaveActive && Math.random() < 0.25 ? 3 : 1;
                         for (let i = 0; i < burst; i++) {
                             if (enemiesSpawnedInWave < enemiesToSpawnInWave && enemies.length < maxEnemies) {
-                                spawnEnemy();
+                                spawnEnemy(activeWaveEvent === 'hunter' ? 'fast' : null, { forceElite: activeWaveEvent === 'hunter' ? Math.random() < 0.10 : undefined });
                                 enemiesSpawnedInWave++;
                             }
                         }
@@ -5028,6 +5112,8 @@
 
             if (waveInProgress && enemiesCleared) {
                 waveInProgress = false;
+                activeWaveEvent = null;
+                applyWaveEventVisuals();
                 document.getElementById('boss-hud').style.display = 'none';
                 const notice = document.getElementById('wave-notice');
 
@@ -5137,6 +5223,15 @@
             let group;
             let hp = Math.floor(baseHp * (1 + (currentWave - 1) * 0.4));
 
+            const eliteEligible = currentWave >= 3 && currentWave % 5 !== 0 && type !== 'necromancer';
+            const isElite = options.forceElite === true || (eliteEligible && Math.random() < 0.08);
+            let eliteAbility = null;
+            if (isElite) {
+                hp *= 3;
+                speed *= activeWaveEvent === 'bloodmoon' ? 1.35 : 1.18;
+                eliteAbility = ['berserk', 'regen', 'vampire'][Math.floor(Math.random() * 3)];
+            }
+
             // Każdy typ ma w runtime zatwierdzony slot `flying` i `ground`, a sam wybór konkretnego wariantu
             // przy spawnie jest losowy i nie jest znowu ograniczany wyłącznie do `kamikaze`.
             const flyingChance = 0.30;
@@ -5168,6 +5263,10 @@
                 usesExternalModel: usesExternalModel,
                 modelKey: modelKey,
                 type: type,
+                isElite: isElite,
+                eliteAbility: eliteAbility,
+                eliteLastAbility: Date.now(),
+                eliteBaseSpeed: speed,
                 maxHp: hp,
                 hp: hp,
                 shieldHits: type === 'shield' ? 10 : 0,
@@ -5189,6 +5288,20 @@
                 isExploding: false,
                 exploderBeepTimer: 0
             };
+
+            if (isElite) {
+                const eliteColor = eliteAbility === 'regen' ? 0x66ff66 : (eliteAbility === 'vampire' ? 0xff2266 : 0xffaa00);
+                const aura = new THREE.PointLight(eliteColor, 2.2, 6.5, 2);
+                aura.position.y = 1.0;
+                aura.name = 'eliteAura';
+                group.add(aura);
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(Math.max(0.9, scale * 0.55), 0.045, 8, 24), new THREE.MeshBasicMaterial({ color: eliteColor, transparent: true, opacity: 0.9 }));
+                ring.rotation.x = Math.PI / 2;
+                ring.position.y = 0.08;
+                ring.name = 'eliteRing';
+                group.add(ring);
+                group.userData.colorHex = eliteColor;
+            }
 
             if (type === 'shield') {
                 group.rotation.y = getEnemyFacingAngle(ex, ez, camera.position.x, camera.position.z);
@@ -6252,6 +6365,28 @@
                     }
                     if (e.userData.slowTimer > 0) e.userData.slowTimer -= delta;
 
+                    if (e.userData.isElite) {
+                        const nowElite = Date.now();
+                        if (e.userData.eliteAbility === 'berserk') {
+                            e.userData.speed = e.userData.eliteBaseSpeed * (Math.sin(nowElite / 280) > 0.35 ? 1.65 : 1.0);
+                        } else {
+                            e.userData.speed = e.userData.eliteBaseSpeed;
+                        }
+                        if (e.userData.eliteAbility === 'regen' && nowElite - e.userData.eliteLastAbility > 1600) {
+                            e.userData.hp = Math.min(e.userData.maxHp, e.userData.hp + Math.max(1, e.userData.maxHp * 0.025));
+                            updateEnemyHpDisplay(e);
+                            e.userData.eliteLastAbility = nowElite;
+                        } else if (e.userData.eliteAbility === 'vampire' && nowElite - e.userData.eliteLastAbility > 2200) {
+                            const distToPlayer = e.position.distanceTo(camera.position);
+                            if (distToPlayer < 12) {
+                                damagePlayer(8 * (e.userData.damageMult || 1));
+                                e.userData.hp = Math.min(e.userData.maxHp, e.userData.hp + e.userData.maxHp * 0.05);
+                                updateEnemyHpDisplay(e);
+                                e.userData.eliteLastAbility = nowElite;
+                            }
+                        }
+                    }
+
                     if (e.userData.type === 'dodger') {
                         e.userData.dodgeCooldown -= delta;
                         if (e.userData.dodgeCooldown <= 0 && bullets.some(b => b.position.distanceTo(e.position) < 3.0)) {
@@ -6499,6 +6634,22 @@
                 }
 
                 if (isPvPMode && bullets[i]) {
+                    // Pociski innych graczy muszą trafiać lokalnego gracza.
+                    if (b.userData.isPvP && b.userData.ownerPeerId && b.userData.ownerPeerId !== localPlayerId && !isLocalPvPDead) {
+                        const localBox = new THREE.Box3().setFromCenterAndSize(
+                            new THREE.Vector3(camera.position.x, camera.position.y - 1.2, camera.position.z),
+                            new THREE.Vector3(1.2, 2.4, 1.2)
+                        );
+                        if (localBox.containsPoint(b.position)) {
+                            const owner = lobbyPlayers.find(p => p.id === b.userData.ownerPeerId);
+                            const dmg = Math.round(b.userData.damage || 20);
+                            takePvPDamage(dmg, b.userData.ownerPeerId, owner ? owner.name : 'GRACZ');
+                            scene.remove(b);
+                            bullets.splice(i, 1);
+                            continue;
+                        }
+                    }
+
                     const localTeam = lobbyPlayers.find(p => p.id === localPlayerId)?.team;
                     for (let rpId in remotePlayers) {
                         const rp = remotePlayers[rpId];
@@ -6602,8 +6753,11 @@
                         stats.kills += 1;
                         for (let k = 0; k < 3; k++) spawnPickup(e.position);
                     } else {
-                        if (Math.random() < 0.6) spawnPickup(e.position);
-                        awardScore(e.userData.type === 'spitter' || e.userData.type === 'shield' || e.userData.type === 'stalker' ? 60 : (e.userData.type === 'bruiser' ? 85 : 35));
+                        if (Math.random() < (e.userData.isElite ? 0.9 : 0.6)) spawnPickup(e.position);
+                        let reward = e.userData.type === 'spitter' || e.userData.type === 'shield' || e.userData.type === 'stalker' ? 60 : (e.userData.type === 'bruiser' ? 85 : 35);
+                        if (e.userData.isElite) reward *= 4;
+                        if (activeWaveEvent === 'bloodmoon') reward *= 2;
+                        awardScore(reward);
                         stats.kills += 1;
                     }
 
